@@ -1,0 +1,12 @@
+# Architecture Decision Log
+
+One entry per significant decision. Newest at the bottom.
+
+Format:
+- **Date** | **Decision** | **Options considered** | **Why** | **What I'd change at scale**
+
+---
+
+- **2026-10-27** | Hybrid architecture: scraping outside Databricks, lakehouse on Databricks, frontend outside | All on Databricks; all outside; hybrid | Free Edition blocks most outbound internet and Apps stop after 24h; hybrid mirrors enterprise landing-zone pattern | Run ingestion on managed compute with a service principal; host the frontend as a Databricks App on a paid workspace
+- **2026-10-28** | Claude Code as primary dev tool, context in version-controlled CLAUDE.md plus docs/ | Cursor; Claude Code; both | Terminal-first fits scraping, CLI and Git work; context is reproducible and reviewable | Same, plus shared team conventions in CLAUDE.md
+- **2026-10-28**: Rejected scraping UFCStats after the UFC terms of use were found to prohibit automated access and database building; fighter stats to come from a licensed MMA API instead. At scale, negotiate a commercial data licence.

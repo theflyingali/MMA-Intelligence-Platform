@@ -1,0 +1,22 @@
+# Secrets
+.env
+*.pem
+.databrickscfg
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Local data (raw scrapes stay out of Git)
+data/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Claude Code personal settings
+.claude/settings.local.json
