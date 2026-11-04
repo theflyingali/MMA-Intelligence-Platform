@@ -49,6 +49,20 @@ Useful options: `--rpm` (default 8, free plan allows 10), `--budget` (default 50
 `--quota-reserve` (stop when the monthly quota remaining falls to this, default 100),
 `--min-refetch-hours`, `--refresh-days`, `--local-only` (write to `data/` only). See `--help`.
 
+### On Databricks (scheduled)
+The same code runs as serverless jobs defined in `databricks.yml`:
+
+```bash
+databricks bundle deploy
+```
+
+```bash
+databricks bundle run ufcalendar_incremental
+```
+
+The API key is read from secret scope `mma` (key `ufcal_key`). `ufcalendar_backfill` is for the Hobby month only
+and refuses to run on a smaller plan. Run it repeatedly until it fetches almost nothing.
+
 ### Outputs
 - Volume: `{endpoint}/ingest_date=YYYY-MM-DD/{id}.json`, `_manifest.json`, `_runs/{run_id}.json`.
 - Local: mirror of every file under `data/ufcalendar/`, request log and run summary under `logs/`.

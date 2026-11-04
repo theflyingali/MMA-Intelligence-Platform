@@ -69,6 +69,7 @@ class ApiClient:
         sleep: Callable[[float], None] = time.sleep,
         max_retries: int = 4,
         timeout: float = 30.0,
+        min_plan_quota: int = 0,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.limiter = limiter
@@ -83,6 +84,7 @@ class ApiClient:
         self._sleep = sleep
         self.max_retries = max_retries
         self.timeout = timeout
+        self.min_plan_quota = min_plan_quota
         self.used = 0
         self.by_endpoint: Counter[str] = Counter()
         self.status_counts: Counter[str] = Counter()
@@ -90,6 +92,10 @@ class ApiClient:
         self.quota_limit: int | None = None
 
     def _check_budget(self) -> None:
+        if self.quota_limit is not None and self.quota_limit < self.min_plan_quota:
+            raise QuotaExhausted(
+                f"plan allows {self.quota_limit} requests/month, this run requires {self.min_plan_quota}"
+            )
         if self.used >= self.budget:
             raise BudgetExhausted(f"request budget of {self.budget} reached")
         if self.quota_remaining is not None and self.quota_remaining <= self.quota_reserve:

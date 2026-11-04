@@ -13,6 +13,7 @@ Full background: @docs/MMA_Project_Context.md
 
 ## Architecture (agreed)
 - Scraping runs OUTSIDE Databricks (laptop or GitHub Actions) and lands raw files in a Unity Catalog volume.
+- Exception: licensed API ingestion (UFCalendar) runs as Databricks serverless jobs, since serverless can reach the API (see `docs/decisions.md`, 2026-10-30).
 - Databricks owns everything from the landing zone onwards: Delta tables, pipelines, LLM enrichment, retrieval, agents, ML model, evaluation, monitoring.
 - Public frontend is hosted outside Databricks and calls Databricks APIs with a service credential.
 

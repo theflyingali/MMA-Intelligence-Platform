@@ -1,0 +1,90 @@
+# Databricks Asset Bundle: the UFCalendar ingestion as serverless jobs.
+# Deploy:  databricks bundle deploy
+# Run:     databricks bundle run ufcalendar_incremental
+bundle:
+  name: mma-intelligence
+
+workspace:
+  profile: mma
+
+sync:
+  exclude:
+    - docs/**
+    - tests/**
+
+variables:
+  landing_dir:
+    default: /Volumes/mma/raw/landing/ufcalendar
+  incremental_schedule_status:
+    description: PAUSED or UNPAUSED
+    default: UNPAUSED
+
+resources:
+  jobs:
+    ufcalendar_incremental:
+      name: ufcalendar-incremental
+      description: >-
+        Recent UFC events, odds, round stats and fighters into the landing volume.
+        Incremental via the manifest; safe on the free plan (about 1 request when nothing changed).
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      schedule:
+        quartz_cron_expression: "0 0 6 */3 * ?"  # 06:00 on every third day of the month
+        timezone_id: Europe/Amsterdam
+        pause_status: ${var.incremental_schedule_status}
+      tasks:
+        - task_key: ingest
+          environment_key: ingest_env
+          spark_python_task:
+            python_file: ./jobs/run_ufcalendar.py
+            parameters:
+              - --org=ufc
+              - --max-events=10
+              - --budget=100
+              - --rpm=8
+              - --output-dir=${var.landing_dir}
+              - --log-dir=/tmp/ufcalendar_logs
+              - --secret-scope=mma
+      environments:
+        - environment_key: ingest_env
+          spec:
+            environment_version: "4"
+            dependencies:
+              - requests>=2.32
+              - python-dotenv>=1.0
+
+    ufcalendar_backfill:
+      name: ufcalendar-backfill
+      description: >-
+        Full history for UFC, PFL, OKTAGON and RIZIN in chunks of 3,000 requests (about 1 hour).
+        Run repeatedly until it fetches almost nothing. Refuses to run unless the key is on a plan
+        with at least 30,000 requests/month (Hobby).
+      max_concurrent_runs: 1
+      timeout_seconds: 7200
+      tasks:
+        - task_key: ingest
+          environment_key: ingest_env
+          spark_python_task:
+            python_file: ./jobs/run_ufcalendar.py
+            parameters:
+              - --org=ufc
+              - --org=pfl
+              - --org=oktagon
+              - --org=rizin
+              - --budget=3000
+              - --rpm=55
+              - --min-plan-quota=30000
+              - --output-dir=${var.landing_dir}
+              - --log-dir=/tmp/ufcalendar_logs
+              - --secret-scope=mma
+      environments:
+        - environment_key: ingest_env
+          spec:
+            environment_version: "4"
+            dependencies:
+              - requests>=2.32
+              - python-dotenv>=1.0
+
+targets:
+  default:
+    default: true

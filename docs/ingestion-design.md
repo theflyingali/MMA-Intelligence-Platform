@@ -56,11 +56,28 @@ Raw files are never modified. Cleaning (title typos, sponsor prefixes, nulls) ha
 - Never print or log the API key or Databricks credentials.
 
 ## Where it runs
-- For now: manually from the laptop, authenticating to Databricks with the CLI profile `mma` (OAuth U2M).
-- Later (undecided): scheduled runner such as GitHub Actions, which needs unattended Databricks auth.
+- Updated 2026-10-30: Databricks serverless jobs, defined in `databricks.yml` (Asset Bundle). Serverless can reach `api.ufcalendar.com` (tested). The key is read from secret scope `mma`, key `ufcal_key`, and files are written straight to the volume path.
+  - `ufcalendar-incremental`: 10 most recent UFC events, every third day at 06:00 Amsterdam, budget 100. Safe on the free plan.
+  - `ufcalendar-backfill`: all four orgs, 3,000 requests per run (about 1 hour), unscheduled. Refuses to run below 30,000 requests/month.
+- Fallback: the same code from the laptop with the CLI profile `mma` (OAuth U2M) and `.env`.
+- A lock file (`_lock.json`) in the landing folder stops two runs writing the manifest at once.
 
 ## Build order
 1. Build and test on the free plan against ~10 recent UFC events.
 2. Validate files land correctly and the manifest works across two runs (second run should fetch almost nothing).
 3. Dry-run the full backfill to get a request count.
 4. Upgrade to Hobby for one month, run the backfill, then downgrade.
+
+## Backfill estimate (2026-10-30)
+From `python -m ingestion.ufcalendar.estimate_backfill` (60 requests; report in `logs/`). Exact event and bout counts come from `/stats/years/{year}`; fighters are an upper bound from the API's ~4.5k figure.
+
+| Org | Events | Bouts | Requests (list + event + odds + rounds) |
+|---|---|---|---|
+| UFC | 889 | 9,367 | 9 + 879 + 879 + 9,271 |
+| PFL | 138 | 1,330 | 2 + 138 + 138 + 1,330 |
+| OKTAGON | 136 | 1,241 | 2 + 136 + 136 + 1,241 |
+| RIZIN | 83 | 894 | 1 + 83 + 83 + 894 |
+
+Plus up to 4,308 fighters. Total about 19,500 requests: fits one Hobby month (30,000) with about 10,000 to spare, roughly 6 hours at 55 requests/minute.
+
+Coverage probes: UFC has round stats back to UFC 1 (1993); priced odds are absent in 2005 and present by 2015. The earliest PFL (2017), OKTAGON (2016) and RIZIN (2015) cards have no round stats or odds. Skipping those eras would save requests, but coverage start dates are unknown and the Hobby month has headroom, so fetch everything.

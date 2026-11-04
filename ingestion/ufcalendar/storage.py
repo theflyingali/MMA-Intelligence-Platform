@@ -39,6 +39,42 @@ def suffixed(relpath: str, now: datetime | None = None) -> str:
     return str(p.with_name(f"{p.stem}__{stamp}{p.suffix}"))
 
 
+LOCK = "_lock.json"
+LOCK_STALE_HOURS = 12
+
+
+class RunLocked(Exception):
+    pass
+
+
+def acquire_lock(sink: Sink, run_id: str, now: datetime, break_lock: bool = False) -> None:
+    """Stop two runs (laptop and job, or two jobs) from writing the manifest at once.
+
+    A lock is held while it has no `released_at` and is younger than LOCK_STALE_HOURS,
+    so a crashed run blocks others for at most that long.
+    """
+    raw = sink.read(LOCK)
+    if raw and not break_lock:
+        held = json.loads(raw)
+        acquired = datetime.fromisoformat(held["acquired_at"].replace("Z", "+00:00"))
+        age_h = (now - acquired).total_seconds() / 3600
+        if not held.get("released_at") and age_h < LOCK_STALE_HOURS:
+            raise RunLocked(
+                f"run {held['run_id']} has held the lock since {held['acquired_at']}; "
+                f"wait for it to finish, or pass --break-lock if it crashed"
+            )
+    stamp = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    sink.write(LOCK, json.dumps({"run_id": run_id, "acquired_at": stamp}).encode("utf-8"))
+
+
+def release_lock(sink: Sink, run_id: str, now: datetime) -> None:
+    raw = sink.read(LOCK)
+    held = json.loads(raw) if raw else {}
+    if held.get("run_id") == run_id:
+        held["released_at"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+        sink.write(LOCK, json.dumps(held).encode("utf-8"))
+
+
 class Sink(Protocol):
     def write_new(self, relpath: str, content: bytes) -> str: ...
     def write(self, relpath: str, content: bytes) -> str: ...

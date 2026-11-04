@@ -31,6 +31,11 @@ class Settings:
     log_dir: Path = Path("logs")
     env_file: Path = Path(".env")
     checkpoint_every: int = 25
+    output_dir: Path | None = None  # write straight to this path (e.g. the volume, inside Databricks)
+    secret_scope: str | None = None  # read UFCAL_KEY from a Databricks secret scope instead of .env
+    secret_key: str = "ufcal_key"
+    break_lock: bool = False
+    min_plan_quota: int = 0
 
     @property
     def page_limit(self) -> int:
@@ -61,9 +66,21 @@ def parse_args(argv: list[str] | None = None) -> Settings:
                    help="With --dry-run: spend list-page calls only, for an exact count of new events")
     p.add_argument("--local-only", action="store_true", help="Write to data/ instead of the Databricks volume")
     p.add_argument("--profile", default=Settings.profile, help="Databricks CLI profile (default: %(default)s)")
+    p.add_argument("--output-dir", type=Path,
+                   help="Write files directly under this path, e.g. /Volumes/mma/raw/landing/ufcalendar "
+                        "when running on Databricks (no SDK upload, no local mirror)")
+    p.add_argument("--log-dir", type=Path, default=Settings.log_dir, help="Local log folder (default: %(default)s)")
+    p.add_argument("--secret-scope", help="Read the API key from this Databricks secret scope")
+    p.add_argument("--secret-key", default=Settings.secret_key, help="Key name in the secret scope (default: %(default)s)")
+    p.add_argument("--min-plan-quota", type=int, default=0,
+                   help="Stop after the first response if the plan's monthly quota is below this "
+                        "(e.g. 30000 so a backfill never runs on the free key)")
+    p.add_argument("--break-lock", action="store_true", help="Ignore a lock left by another run (use with care)")
     a = p.parse_args(argv)
     if a.discover and not a.dry_run:
         p.error("--discover only makes sense with --dry-run")
+    if a.output_dir and a.local_only:
+        p.error("--output-dir and --local-only are mutually exclusive")
     if a.budget < 0 or a.rpm < 1:
         p.error("--budget must be >= 0 and --rpm >= 1")
     return Settings(
@@ -79,4 +96,10 @@ def parse_args(argv: list[str] | None = None) -> Settings:
         discover=a.discover,
         local_only=a.local_only,
         profile=a.profile,
+        output_dir=a.output_dir,
+        log_dir=a.log_dir,
+        secret_scope=a.secret_scope,
+        secret_key=a.secret_key,
+        break_lock=a.break_lock,
+        min_plan_quota=a.min_plan_quota,
     )
