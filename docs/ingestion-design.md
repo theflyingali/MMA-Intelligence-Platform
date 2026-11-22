@@ -82,4 +82,4 @@ Plus up to 4,308 fighters. Total about 19,500 requests: fits one Hobby month (30
 
 Coverage probes: UFC has round stats back to UFC 1 (1993); priced odds are absent in 2005 and present by 2015. The earliest PFL (2017), OKTAGON (2016) and RIZIN (2015) cards have no round stats or odds. Skipping those eras would save requests, but coverage start dates are unknown and the Hobby month has headroom, so fetch everything.
 
-Actual (2026-11-22): the full backfill took 19,936 requests over three runs: 14 list pages, 1,263 events, 1,263 odds, 13,090 round-stat fetches and 5,322 fighters. The fighter count beat the 4,308 upper bound because fighters are counted per org, and the API's ~4.5k figure turned out to be lower than the distinct fighter ids across four orgs.
+Actual (2026-11-22): the full backfill took 19,936 requests over three runs: 14 list pages, 1,263 events, 1,263 odds, 13,090 round-stat fetches and 5,322 fighters. The fighter count beat the 4,308 "upper bound", so the API's ~4.5k fighter figure does not cover every fighter id that appears on these four orgs' cards (reason unconfirmed).

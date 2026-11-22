@@ -22,7 +22,7 @@ Current phase: **1. Fighter stats foundation** (ingestion built, bronze to silve
 - **Tracker session runs in the cloud** (since 2026-11-22), so the Mac no longer needs to stay awake. The old local tracker and ingestion sessions are archived; whether a Remote Control process is still running on the Mac is unconfirmed.
 
 ## Next
-1. Check the long backfill run (started 2026-11-22 13:58Z, 16,000-request budget, about 5 hours at 55/min): outcome, requests used, `history_complete`, any fair-usage block. Then check the next scheduled run, 2026-11-23 14:00 Amsterdam. Pause the schedule once a run fetches almost nothing.
+1. Pause the daily backfill schedule now that history is complete (owner to confirm); the incremental job covers new events.
 2. Check the first scheduled incremental run after the deploy, due 2026-11-25 06:00 Amsterdam (requests used, orgs fetched). If it does not appear, the scheduler is still dropping runs.
 3. Decide by about 19 December whether to renew Hobby (see `docs/decisions.md`, 2026-11-22). On downgrade, revert the incremental variables and pause the backfill schedule first.
 4. Add alerting for missed scheduled runs, or a backup trigger outside Databricks (e.g. a GitHub Actions cron calling `jobs run-now`).
