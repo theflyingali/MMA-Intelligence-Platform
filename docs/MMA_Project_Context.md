@@ -94,7 +94,7 @@ Still to verify:
 ## Status
 - 27 October 2026: Decided on the MMA project as the main side project. Checked Free Edition limits and agreed the hybrid approach above. Earlier pharma RAG project (public GLP-1 NICE/EMA documents) is now secondary.
 - 28 October 2026: Broadened the goal from Databricks/FDE preparation to general modern-AI upskilling, with emphasis on building, diagnosing and evaluating chatbots and agents.
-- Nothing built yet for the MMA app. Next: verify the open points above, then design the phase 1 architecture.
+- Current status, progress and next steps live in `docs/status.md`. Read that file for the latest state rather than this section.
 
 ## Outputs I want along the way
 - A working, deployed app with real users.
