@@ -44,12 +44,24 @@ class Settings:
         return 100
 
 
+def split_orgs(values: list[str] | None) -> list[str]:
+    """Flatten repeated and comma-separated --org values, keeping first-seen order (it sets priority)."""
+    orgs: list[str] = []
+    for value in values or []:
+        for org in value.split(","):
+            org = org.strip().lower()
+            if org and org not in orgs:
+                orgs.append(org)
+    return orgs
+
+
 def parse_args(argv: list[str] | None = None) -> Settings:
     p = argparse.ArgumentParser(
         prog="python -m ingestion.ufcalendar",
         description="Incremental UFCalendar ingestion into the Unity Catalog landing volume.",
     )
-    p.add_argument("--org", dest="orgs", action="append", help="Org slug; repeat for several (default: ufc)")
+    p.add_argument("--org", dest="orgs", action="append",
+                   help="Org slug, or a comma-separated list; repeat for several, processed in order (default: ufc)")
     p.add_argument("--max-events", type=int, help="Only consider the N most recent completed events per org")
     p.add_argument("--budget", type=int, default=Settings.budget, help="Max API requests this run (default: %(default)s)")
     p.add_argument("--rpm", type=int, default=Settings.rpm, help="Client-side requests per minute (default: %(default)s)")
@@ -83,8 +95,11 @@ def parse_args(argv: list[str] | None = None) -> Settings:
         p.error("--output-dir and --local-only are mutually exclusive")
     if a.budget < 0 or a.rpm < 1:
         p.error("--budget must be >= 0 and --rpm >= 1")
+    orgs = split_orgs(a.orgs)
+    if a.orgs and not orgs:
+        p.error("--org needs at least one org slug")
     return Settings(
-        orgs=a.orgs or list(DEFAULT_ORGS),
+        orgs=orgs or list(DEFAULT_ORGS),
         max_events=a.max_events,
         budget=a.budget,
         rpm=a.rpm,
