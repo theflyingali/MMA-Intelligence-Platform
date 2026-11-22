@@ -1,6 +1,6 @@
 # Project Status
 
-Single source of truth for what is done, in progress and next. Kept current by the tracker session (see "How to update" below). Last updated: 2026-11-22 (after the cloud access check).
+Single source of truth for what is done, in progress and next. Kept current by the tracker session (see "How to update" below). Last updated: 2026-11-22 (tracker moved to the cloud).
 
 Current phase: **1. Fighter stats foundation** (ingestion built, bronze to silver not started).
 
@@ -16,7 +16,7 @@ Current phase: **1. Fighter stats foundation** (ingestion built, bronze to silve
 - **Historical UFC backfill: incomplete.** Verified from the cloud on 2026-11-22 (read-only check of the manifest and job runs). The `ufcalendar-backfill` run of 2026-11-04 (81.6 min) ended SUCCESS, but `listing.ufc.history_complete` is still `False`. Manifest as of 2026-11-07 05:03Z: 36 events, 36 odds, 372 bouts with round stats, 626 fighters, all HTTP 200. Why it stopped early is unconfirmed (free-quota limit or job parameters; logs not checked).
 - **Scheduled ingestion: no runs since 2026-11-07, and the schedule's status is unclear.** `databricks.yml` defines a schedule (06:00 Amsterdam on every third day of the month, `UNPAUSED` by default). The incremental runs on 31 October, 1 and 7 November all started at 05:00 UTC, which matches that cron, but the owner reports the job was never scheduled. The runs due on 10, 13, 16 and 19 November are missing. Unresolved: open the job in the Jobs UI and check whether it has a schedule, whether it is paused, and what triggered the earlier runs.
 - **Cloud access works.** The Default cloud environment can reach Databricks with `DATABRICKS_HOST` and `DATABRICKS_TOKEN` (SCIM check returned 200 after the host was allowlisted and the token regenerated). `api.ufcalendar.com` is blocked in the cloud environment, which is fine because the jobs call it from Databricks.
-- **Remote Control** is on for the tracker session (local, so the Mac must stay awake).
+- **Tracker session now runs in the cloud** (as of 2026-11-22), so the Mac no longer needs to stay awake. Still to do by the owner: start the cloud ingestion session, archive the three cloud check sessions and the old local ingestion session (and turn off its Remote Control).
 
 ## Next
 1. Settle the job schedule: check the job in the Jobs UI, then deploy the schedule from `databricks.yml` (from a cloud session, using the environment's token).
