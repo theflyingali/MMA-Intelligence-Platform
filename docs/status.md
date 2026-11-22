@@ -14,20 +14,20 @@ Current phase: **1. Fighter stats foundation** (ingestion built, bronze to silve
 
 ## In progress
 - **Historical UFC backfill: incomplete, cause found.** The `ufcalendar-backfill` run of 2026-11-04 was a manual run with overridden free-plan parameters (`--org=ufc --budget=650 --rpm=8 --quota-reserve=250`, no plan guard). It stopped cleanly on its 650-request budget after one list page, which exits 0 and shows SUCCESS; `history_complete` is only set after the last list page. Manifest as of 2026-11-07: 36 events, 372 bouts with round stats, 626 fighters. Details in `docs/learning-log.md`.
-- **UFCalendar key upgraded to Hobby** (30,000/month, 60/min), reported by the owner on 2026-11-22; not yet checked against `/v1/usage`. Job changes for Hobby were **deployed on 2026-11-22** from branch `claude/blissful-hopper-mb8rz9` (both jobs updated, settings checked via the Jobs API): incremental widened to UFC, PFL, OKTAGON, RIZIN (budget 600, 55/min); backfill scope and budget as job parameters (UFC first); backfill daily 14:00 schedule, deployed PAUSED. See `docs/decisions.md` (2026-11-22).
-- **Scheduled ingestion: schedule is live, but no runs since 2026-11-07.** Checked via the Jobs API on 2026-11-22: `ufcalendar-incremental` is bundle-deployed with `0 0 6 */3 * ?` Europe/Amsterdam, `UNPAUSED`. The 31 October, 1 and 7 November runs were `PERIODIC` (scheduler). Runs due on 4, 10, 13, 16, 19 and 22 November never appear. Cause unconfirmed; the 4 November "triggering new runs ... disabled" error suggests a Free Edition fair-usage block.
+- **UFCalendar key on Hobby** (30,000/month, 60/min) until the quota resets on 2026-12-22 (owner confirmed; the backfill's 30,000 plan guard passed on 2026-11-22).
+- **Backfill running.** Manual run started 2026-11-22 12:01Z (UFC first, budget 3,000). The daily 14:00 schedule is still PAUSED; later chunks need manual runs or unpausing it. About 7 runs to finish all four orgs. Job changes for Hobby were **deployed on 2026-11-22** from branch `claude/blissful-hopper-mb8rz9` (both jobs updated, settings checked via the Jobs API): incremental widened to UFC, PFL, OKTAGON, RIZIN (budget 600, 55/min); backfill scope and budget as job parameters (UFC first); backfill daily 14:00 schedule, deployed PAUSED. See `docs/decisions.md` (2026-11-22).
+- **Scheduled ingestion: schedule is live, but no runs since 2026-11-07.** Checked via the Jobs API on 2026-11-22: `ufcalendar-incremental` is bundle-deployed with `0 0 6 */3 * ?` Europe/Amsterdam, `UNPAUSED`. The 31 October, 1 and 7 November runs were `PERIODIC` (scheduler). Runs due on 4, 10, 13, 16, 19 and 22 November never appear. Audit log check on 2026-11-22: the schedule is unchanged since 30 October and the scheduler silently skipped every slot from 4 November (no `runTriggered`, no error). Manual triggering works again as of 2026-11-22. Cause unconfirmed; most likely the Free Edition block on triggering new runs seen on 4 November. Details in `docs/learning-log.md`.
 - **Cloud access works.** The Default cloud environment can reach Databricks with `DATABRICKS_HOST` and `DATABRICKS_TOKEN` (SCIM check returned 200 after the host was allowlisted and the token regenerated). `api.ufcalendar.com` is blocked in the cloud environment, which is fine because the jobs call it from Databricks.
 - **Remote Control** is on for the tracker session (local, so the Mac must stay awake).
 
 ## Next
-1. Confirm the Hobby limits and the monthly quota reset date (dashboard or `/v1/usage`); not yet confirmed. Check the first scheduled incremental run after the deploy, due 2026-11-25 06:00 Amsterdam (requests used, orgs fetched). Merge the branch to main.
-2. Finish the UFC backfill: about 7 runs of 3,000 requests. Unpause the backfill schedule (or run it by hand) once deployed.
-3. Find out why scheduled runs stopped after 7 November: trigger one manual incremental run and see whether triggering is still blocked.
-4. Decide by about 28 November whether to keep Hobby for December (see `docs/decisions.md`, 2026-11-22). On downgrade, revert the incremental variables and pause the backfill schedule first.
-5. Add alerting for missed scheduled runs (first raised on 2026-11-04, now confirmed to matter).
-6. Bronze Delta tables from the landing files (dedupe on natural key, latest `fetched_at` wins).
-7. Silver tables: clean titles and sponsor prefixes, flag Contender Series bouts.
-8. Phase 1 dashboard app, with the visible "Data by UFCalendar" link the terms require.
+1. Check the 2026-11-22 backfill run result (requests used, `history_complete`), then run the next chunks daily or unpause the backfill schedule.
+2. Check the first scheduled incremental run after the deploy, due 2026-11-25 06:00 Amsterdam (requests used, orgs fetched). If it does not appear, the scheduler is still dropping runs.
+3. Decide by about 19 December whether to renew Hobby (see `docs/decisions.md`, 2026-11-22). On downgrade, revert the incremental variables and pause the backfill schedule first.
+4. Add alerting for missed scheduled runs, or a backup trigger outside Databricks (e.g. a GitHub Actions cron calling `jobs run-now`).
+5. Bronze Delta tables from the landing files (dedupe on natural key, latest `fetched_at` wins).
+6. Silver tables: clean titles and sponsor prefixes, flag Contender Series bouts.
+7. Phase 1 dashboard app, with the visible "Data by UFCalendar" link the terms require.
 
 ## Open questions
 - Can Databricks Apps be opened by users outside the workspace on Free Edition?
