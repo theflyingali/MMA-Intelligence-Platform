@@ -1,6 +1,6 @@
 # Project Status
 
-Single source of truth for what is done, in progress and next. Kept current by the tracker session (see "How to update" below). Last updated: 2026-11-22.
+Single source of truth for what is done, in progress and next. Kept current by the tracker session (see "How to update" below). Last updated: 2026-11-22 (after the cloud access check).
 
 Current phase: **1. Fighter stats foundation** (ingestion built, bronze to silver not started).
 
@@ -13,24 +13,26 @@ Current phase: **1. Fighter stats foundation** (ingestion built, bronze to silve
 - 2026-10-30: Ingestion moved to Databricks serverless jobs via an Asset Bundle (`ufcalendar-incremental`, `ufcalendar-backfill`); laptop kept as fallback.
 
 ## In progress
-- **Historical backfill (UFC), partial.** After the 4 November job block, a free-quota chunk ran from the laptop and was paused. At that point the manifest held 13 events, 126 bouts with round stats and 244 fighters, with 905 free requests left that month.
-- **Databricks backfill run, result unconfirmed.** The ingestion session reported job runs working again and started a run on Databricks (expected about 80 minutes), but its watcher was stopped when the session closed. Check the run history in the Jobs UI and the manifest before treating this as done. Note the backfill job is designed to refuse below a 30,000/month plan, so confirm which job actually ran.
-- **Uncommitted:** the 4 November entry in `docs/learning-log.md` (reworded from "completed" to "paused").
+- **Historical UFC backfill: incomplete.** Verified from the cloud on 2026-11-22 (read-only check of the manifest and job runs). The `ufcalendar-backfill` run of 2026-11-04 (81.6 min) ended SUCCESS, but `listing.ufc.history_complete` is still `False`. Manifest as of 2026-11-07 05:03Z: 36 events, 36 odds, 372 bouts with round stats, 626 fighters, all HTTP 200. Why it stopped early is unconfirmed (free-quota limit or job parameters; logs not checked).
+- **Scheduled ingestion has not run since 2026-11-07.** The incremental job runs every third day at 05:00 UTC; the runs expected on 10, 13, 16 and 19 November are missing. Cause unconfirmed: job paused, or the Free Edition fair-usage block seen on 4 November. Check the job's schedule and run history in the Jobs UI.
+- **Cloud access works.** The Default cloud environment can reach Databricks with `DATABRICKS_HOST` and `DATABRICKS_TOKEN` (SCIM check returned 200 after the host was allowlisted and the token regenerated). `api.ufcalendar.com` is blocked in the cloud environment, which is fine because the jobs call it from Databricks.
+- **Remote Control** is on for the tracker session (local, so the Mac must stay awake).
 
 ## Next
-1. Confirm the state of the Databricks run and the manifest (counts per endpoint).
-2. Commit the learning-log change.
-3. Decide when to take the one Hobby month for the full backfill (UFC, PFL, OKTAGON, RIZIN).
-4. Bronze Delta tables from the landing files (dedupe on natural key, latest `fetched_at` wins).
-5. Silver tables: clean titles and sponsor prefixes, flag Contender Series bouts.
-6. Phase 1 dashboard app, with the visible "Data by UFCalendar" link the terms require.
+1. Find out why the schedule stopped after 2026-11-07 (job paused vs fair-usage block) and fix it.
+2. Decide how to finish the UFC backfill: stay on the free plan in small chunks, or take the one Hobby month (about 19,500 requests for UFC, PFL, OKTAGON, RIZIN) and run the backfill job. Check why the 4 November run stopped with `history_complete` False.
+3. Add alerting for missed scheduled runs (first raised on 2026-11-04, now confirmed to matter).
+4. Move the tracker and ingestion work to cloud sessions; archive the finished "MMA Intelligence Platform repo" session.
+5. Bronze Delta tables from the landing files (dedupe on natural key, latest `fetched_at` wins).
+6. Silver tables: clean titles and sponsor prefixes, flag Contender Series bouts.
+7. Phase 1 dashboard app, with the visible "Data by UFCalendar" link the terms require.
 
 ## Open questions
 - Can Databricks Apps be opened by users outside the workspace on Free Edition?
 - Which foundation models and how many serving endpoints are available?
 - How to authenticate the external frontend securely (token or service principal options on Free Edition)?
 - Which outbound domains are allowlisted, beyond `api.ufcalendar.com` (already tested)?
-- Alerting for missed scheduled runs (raised in the 2026-11-04 learning-log entry; not built).
+- Do Free Edition personal access tokens keep working long term? One is in use in the cloud environment now.
 
 ## Known risks
 - Free Edition fair usage can block job runs for a day or more with no visible quota. The laptop fallback needs no Databricks compute.
