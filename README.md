@@ -53,12 +53,14 @@ Useful options: `--rpm` (default 8, free plan allows 10), `--budget` (default 50
 The same code runs as serverless jobs defined in `databricks.yml`:
 
 ```bash
-databricks bundle deploy
+databricks bundle deploy -p mma
 ```
 
 ```bash
-databricks bundle run ufcalendar_incremental
+databricks bundle run ufcalendar_incremental -p mma
 ```
+
+From a cloud session, drop `-p mma`: the CLI then uses `DATABRICKS_HOST` and `DATABRICKS_TOKEN` from the environment.
 
 The API key is read from secret scope `mma` (key `ufcal_key`). `ufcalendar_backfill` is for the Hobby month only
 and refuses to run on a smaller plan. Run it repeatedly until it fetches almost nothing.

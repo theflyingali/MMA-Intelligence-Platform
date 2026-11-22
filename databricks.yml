@@ -1,11 +1,10 @@
 # Databricks Asset Bundle: the UFCalendar ingestion as serverless jobs.
 # Deploy:  databricks bundle deploy
 # Run:     databricks bundle run ufcalendar_incremental
+# Auth: no profile is set here, so the CLI uses DATABRICKS_HOST and DATABRICKS_TOKEN when present (cloud sessions).
+# On the laptop add `-p mma` to each command, or `export DATABRICKS_CONFIG_PROFILE=mma`.
 bundle:
   name: mma-intelligence
-
-workspace:
-  profile: mma
 
 sync:
   exclude:
