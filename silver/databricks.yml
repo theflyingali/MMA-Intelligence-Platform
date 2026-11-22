@@ -1,0 +1,51 @@
+# Databricks Asset Bundle for the silver build. Separate from the root bundle and from bronze
+# (bundle name `mma-silver`), so a deploy can only touch this one job. Merge the bronze and silver
+# bundles into one two-task pipeline after the full run.
+#
+# Deploy (from this folder):  databricks bundle deploy
+# Run:                        databricks bundle run silver_ufcalendar
+# Auth: DATABRICKS_HOST and DATABRICKS_TOKEN (cloud sessions); on the laptop add `-p mma`.
+#
+# Defaults are the test run: bronze_dev -> silver_dev. Full run once bronze is complete:
+# parameters source_schema=bronze, target_schema=silver.
+bundle:
+  name: mma-silver
+
+resources:
+  jobs:
+    silver_ufcalendar:
+      name: ufcal-silver
+      description: >-
+        Builds typed, cleaned silver tables from bronze (event, bout, fighter_bout, round_stats, odds,
+        fighter, fighter_record). Reads only bronze tables. Incremental: only bronze rows newer than what
+        silver was built from are processed. full_refresh=true rebuilds silver from bronze.
+        dry_run=true counts changes and writes nothing. No schedule: run it by hand, after bronze.
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      parameters:
+        - name: source_schema
+          default: bronze_dev
+        - name: target_schema
+          default: silver_dev
+        - name: full_refresh
+          default: "false"
+        - name: dry_run
+          default: "false"
+      tasks:
+        - task_key: build
+          environment_key: silver_env
+          spark_python_task:
+            python_file: ./run_silver.py
+            parameters:
+              - "--source-schema={{job.parameters.source_schema}}"
+              - "--target-schema={{job.parameters.target_schema}}"
+              - "--full-refresh={{job.parameters.full_refresh}}"
+              - "--dry-run={{job.parameters.dry_run}}"
+      environments:
+        - environment_key: silver_env
+          spec:
+            environment_version: "4"
+
+targets:
+  default:
+    default: true

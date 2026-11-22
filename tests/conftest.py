@@ -102,3 +102,28 @@ def api() -> FakeApi:
 @pytest.fixture
 def settings(tmp_path) -> Settings:
     return Settings(budget=1000, local_only=True, local_root=tmp_path / "landing", log_dir=tmp_path / "logs")
+
+
+@pytest.fixture(scope="session")
+def spark(tmp_path_factory):
+    """Local Spark with Delta for the end-to-end bronze and silver tests (skipped without pyspark)."""
+    import os
+    import sys
+
+    pytest.importorskip("pyspark")
+    pytest.importorskip("delta")
+    from delta import configure_spark_with_delta_pip
+    from pyspark.sql import SparkSession
+
+    os.environ["PYSPARK_PYTHON"] = sys.executable
+    builder = (
+        SparkSession.builder.master("local[2]").appName("mma-tests")
+        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+        .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+        .config("spark.sql.warehouse.dir", str(tmp_path_factory.mktemp("warehouse")))
+        .config("spark.ui.enabled", "false")
+        .config("spark.sql.shuffle.partitions", "2")
+    )
+    session = configure_spark_with_delta_pip(builder).getOrCreate()
+    yield session
+    session.stop()
