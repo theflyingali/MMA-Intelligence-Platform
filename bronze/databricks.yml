@@ -1,0 +1,51 @@
+# Databricks Asset Bundle for the bronze load. Deliberately separate from the root databricks.yml
+# (bundle name `mma-bronze`), so deploying it can only create, change or delete this one job and
+# can never touch the UFCalendar ingestion jobs while a backfill is running.
+#
+# Deploy (from this folder):  databricks bundle deploy
+# Run:                        databricks bundle run bronze_ufcalendar
+# Auth: DATABRICKS_HOST and DATABRICKS_TOKEN (cloud sessions); on the laptop add `-p mma`.
+#
+# The defaults are the safe test run: schema bronze_dev, 10 events, no schedule.
+# Full run once the backfill is complete: run with job parameters schema=bronze, max_events=0.
+bundle:
+  name: mma-bronze
+
+resources:
+  jobs:
+    bronze_ufcalendar:
+      name: ufcal-bronze
+      description: >-
+        Loads new UFCalendar landing files into bronze Delta tables (merge on natural key, latest
+        fetched_at wins). Reads only from the landing volume; never calls the API. Incremental via
+        the ufcal_ingest_log table, so reruns skip files already loaded. No schedule: run it by hand.
+        Set dry_run=true to list what would load without writing anything.
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      parameters:
+        - name: schema
+          default: bronze_dev
+        - name: max_events
+          default: "10"
+        - name: max_files
+          default: "0"
+        - name: dry_run
+          default: "false"
+      tasks:
+        - task_key: load
+          environment_key: bronze_env
+          spark_python_task:
+            python_file: ./run_bronze.py
+            parameters:
+              - "--schema={{job.parameters.schema}}"
+              - "--max-events={{job.parameters.max_events}}"
+              - "--max-files={{job.parameters.max_files}}"
+              - "--dry-run={{job.parameters.dry_run}}"
+      environments:
+        - environment_key: bronze_env
+          spec:
+            environment_version: "4"
+
+targets:
+  default:
+    default: true
