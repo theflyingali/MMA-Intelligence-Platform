@@ -16,7 +16,7 @@ from .config import Settings, parse_args
 from .manifest import Manifest
 from .ratelimit import SlidingWindowLimiter
 from .runner import Runner, Summary
-from .storage import MANIFEST, LocalSink, RunLocked, VolumeSink, acquire_lock, release_lock
+from .storage import MANIFEST, LocalSink, RunLocked, VolumeSink, acquire_lock, release_lock, workspace_client
 
 log = logging.getLogger("ufcalendar")
 
@@ -85,9 +85,7 @@ def build_sink(settings: Settings) -> LocalSink | VolumeSink:
     mirror = LocalSink(settings.local_root)
     if settings.local_only:
         return mirror
-    from databricks.sdk import WorkspaceClient
-
-    return VolumeSink(settings.volume_root, WorkspaceClient(profile=settings.profile), mirror)
+    return VolumeSink(settings.volume_root, workspace_client(settings.profile), mirror)
 
 
 def print_summary(summary: Summary, log_path: Path) -> None:

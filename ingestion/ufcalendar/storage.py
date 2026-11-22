@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import io
 import json
+import configparser
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any, Protocol
@@ -14,6 +16,21 @@ from .client import ApiResponse
 log = logging.getLogger("ufcalendar.storage")
 
 MANIFEST = "_manifest.json"
+
+
+def workspace_client(profile: str):
+    """Databricks client: the CLI profile if it exists here (laptop), else DATABRICKS_HOST/TOKEN (cloud)."""
+    from databricks.sdk import WorkspaceClient
+
+    cfg = configparser.ConfigParser()
+    cfg.read(Path(os.environ.get("DATABRICKS_CONFIG_FILE", "~/.databrickscfg")).expanduser())
+    if cfg.has_section(profile):
+        return WorkspaceClient(profile=profile)
+    if os.environ.get("DATABRICKS_HOST") and os.environ.get("DATABRICKS_TOKEN"):
+        return WorkspaceClient()
+    raise RuntimeError(
+        f"No Databricks CLI profile '{profile}' and DATABRICKS_HOST/DATABRICKS_TOKEN are not both set."
+    )
 
 
 def envelope(resp: ApiResponse) -> bytes:

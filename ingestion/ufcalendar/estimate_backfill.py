@@ -28,7 +28,7 @@ from .config import BASE_URL, DEFAULT_ORGS, VOLUME_ROOT
 from .manifest import Manifest
 from .planner import PLAYED
 from .ratelimit import SlidingWindowLimiter
-from .storage import MANIFEST, LocalSink, VolumeSink
+from .storage import MANIFEST, LocalSink, VolumeSink, workspace_client
 
 log = logging.getLogger("ufcalendar.estimate")
 
@@ -174,8 +174,7 @@ def main(argv: list[str] | None = None) -> int:
     if a.local_only:
         sink: LocalSink | VolumeSink = mirror
     else:
-        from databricks.sdk import WorkspaceClient
-        sink = VolumeSink(VOLUME_ROOT, WorkspaceClient(profile=a.profile), mirror)
+        sink = VolumeSink(VOLUME_ROOT, workspace_client(a.profile), mirror)
     manifest = Manifest.from_json(sink.read(MANIFEST))
     known, known_fighters = known_counts(manifest)
 
