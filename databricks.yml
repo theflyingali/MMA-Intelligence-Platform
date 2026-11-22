@@ -29,8 +29,8 @@ variables:
     description: Max API requests per incremental run
     default: "600"
   backfill_schedule_status:
-    description: PAUSED or UNPAUSED. Leave PAUSED unless the key is on Hobby or above.
-    default: PAUSED
+    description: PAUSED or UNPAUSED. UNPAUSED only while the key is on Hobby or above (Hobby until 2026-12-22).
+    default: UNPAUSED
 
 resources:
   jobs:
