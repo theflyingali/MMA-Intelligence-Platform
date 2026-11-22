@@ -17,6 +17,20 @@ variables:
   incremental_schedule_status:
     description: PAUSED or UNPAUSED
     default: UNPAUSED
+  # Plan-dependent settings. Hobby (30,000/month, 60/min) values below; on the free plan
+  # (1,000/month, 10/min) set incremental_orgs=ufc, incremental_rpm=8, incremental_budget=100.
+  incremental_orgs:
+    description: Comma-separated org slugs, in priority order
+    default: ufc,pfl,oktagon,rizin
+  incremental_rpm:
+    description: Client-side requests per minute (keep below the plan limit)
+    default: "55"
+  incremental_budget:
+    description: Max API requests per incremental run
+    default: "600"
+  backfill_schedule_status:
+    description: PAUSED or UNPAUSED. Leave PAUSED unless the key is on Hobby or above.
+    default: PAUSED
 
 resources:
   jobs:
@@ -37,10 +51,10 @@ resources:
           spark_python_task:
             python_file: ./jobs/run_ufcalendar.py
             parameters:
-              - --org=ufc
+              - --org=${var.incremental_orgs}
               - --max-events=10
-              - --budget=100
-              - --rpm=8
+              - --budget=${var.incremental_budget}
+              - --rpm=${var.incremental_rpm}
               - --output-dir=${var.landing_dir}
               - --log-dir=/tmp/ufcalendar_logs
               - --secret-scope=mma
@@ -55,22 +69,30 @@ resources:
     ufcalendar_backfill:
       name: ufcalendar-backfill
       description: >-
-        Full history for UFC, PFL, OKTAGON and RIZIN in chunks of 3,000 requests (about 1 hour).
-        Run repeatedly until it fetches almost nothing. Refuses to run unless the key is on a plan
-        with at least 30,000 requests/month (Hobby).
+        Full history in chunks of 3,000 requests (about 1 hour). Orgs run in the order given, so UFC
+        finishes before PFL, OKTAGON and RIZIN start. Run repeatedly until it fetches almost nothing.
+        Refuses to run unless the key is on a plan with at least 30,000 requests/month (Hobby).
+        To change scope or chunk size use "Run now with different parameters" on the job
+        parameters below; do not override the task's python_params (that drops the plan guard).
       max_concurrent_runs: 1
       timeout_seconds: 7200
+      parameters:
+        - name: orgs
+          default: ufc,pfl,oktagon,rizin
+        - name: budget
+          default: "3000"
+      schedule:
+        quartz_cron_expression: "0 0 14 * * ?"  # daily 14:00 Amsterdam, clear of the 06:00 incremental
+        timezone_id: Europe/Amsterdam
+        pause_status: ${var.backfill_schedule_status}
       tasks:
         - task_key: ingest
           environment_key: ingest_env
           spark_python_task:
             python_file: ./jobs/run_ufcalendar.py
             parameters:
-              - --org=ufc
-              - --org=pfl
-              - --org=oktagon
-              - --org=rizin
-              - --budget=3000
+              - "--org={{job.parameters.orgs}}"
+              - "--budget={{job.parameters.budget}}"
               - --rpm=55
               - --min-plan-quota=30000
               - --output-dir=${var.landing_dir}

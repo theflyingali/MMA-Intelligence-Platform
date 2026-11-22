@@ -57,8 +57,8 @@ Raw files are never modified. Cleaning (title typos, sponsor prefixes, nulls) ha
 
 ## Where it runs
 - Updated 2026-10-30: Databricks serverless jobs, defined in `databricks.yml` (Asset Bundle). Serverless can reach `api.ufcalendar.com` (tested). The key is read from secret scope `mma`, key `ufcal_key`, and files are written straight to the volume path.
-  - `ufcalendar-incremental`: 10 most recent UFC events, every third day at 06:00 Amsterdam, budget 100. Safe on the free plan.
-  - `ufcalendar-backfill`: all four orgs, 3,000 requests per run (about 1 hour), unscheduled. Refuses to run below 30,000 requests/month.
+  - `ufcalendar-incremental`: 10 most recent events per org, every third day at 06:00 Amsterdam. Orgs, budget and rpm are bundle variables (Hobby: four orgs, budget 600, 55/min; free plan: `ufc`, 100, 8/min).
+  - `ufcalendar-backfill`: orgs in priority order (UFC first) and budget as job parameters, 3,000 requests per run (about 1 hour), daily 14:00 schedule deployed PAUSED. Refuses to run below 30,000 requests/month.
 - Fallback: the same code from the laptop with the CLI profile `mma` (OAuth U2M) and `.env`.
 - A lock file (`_lock.json`) in the landing folder stops two runs writing the manifest at once.
 

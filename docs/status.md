@@ -1,6 +1,6 @@
 # Project Status
 
-Single source of truth for what is done, in progress and next. Kept current by the tracker session (see "How to update" below). Last updated: 2026-11-22 (after the cloud access check).
+Single source of truth for what is done, in progress and next. Kept current by the tracker session (see "How to update" below). Last updated: 2026-11-22 (after the job check and Hobby plan changes).
 
 Current phase: **1. Fighter stats foundation** (ingestion built, bronze to silver not started).
 
@@ -13,19 +13,21 @@ Current phase: **1. Fighter stats foundation** (ingestion built, bronze to silve
 - 2026-10-30: Ingestion moved to Databricks serverless jobs via an Asset Bundle (`ufcalendar-incremental`, `ufcalendar-backfill`); laptop kept as fallback.
 
 ## In progress
-- **Historical UFC backfill: incomplete.** Verified from the cloud on 2026-11-22 (read-only check of the manifest and job runs). The `ufcalendar-backfill` run of 2026-11-04 (81.6 min) ended SUCCESS, but `listing.ufc.history_complete` is still `False`. Manifest as of 2026-11-07 05:03Z: 36 events, 36 odds, 372 bouts with round stats, 626 fighters, all HTTP 200. Why it stopped early is unconfirmed (free-quota limit or job parameters; logs not checked).
-- **Scheduled ingestion: no runs since 2026-11-07, and the schedule's status is unclear.** `databricks.yml` defines a schedule (06:00 Amsterdam on every third day of the month, `UNPAUSED` by default). The incremental runs on 31 October, 1 and 7 November all started at 05:00 UTC, which matches that cron, but the owner reports the job was never scheduled. The runs due on 10, 13, 16 and 19 November are missing. Unresolved: open the job in the Jobs UI and check whether it has a schedule, whether it is paused, and what triggered the earlier runs.
+- **Historical UFC backfill: incomplete, cause found.** The `ufcalendar-backfill` run of 2026-11-04 was a manual run with overridden free-plan parameters (`--org=ufc --budget=650 --rpm=8 --quota-reserve=250`, no plan guard). It stopped cleanly on its 650-request budget after one list page, which exits 0 and shows SUCCESS; `history_complete` is only set after the last list page. Manifest as of 2026-11-07: 36 events, 372 bouts with round stats, 626 fighters. Details in `docs/learning-log.md`.
+- **UFCalendar key upgraded to Hobby** (30,000/month, 60/min), reported by the owner on 2026-11-22; not yet checked against `/v1/usage`. Job changes for Hobby are committed on branch `claude/blissful-hopper-mb8rz9` and validated, **not yet deployed**: incremental widened to UFC, PFL, OKTAGON, RIZIN (budget 600, 55/min); backfill scope and budget as job parameters (UFC first); backfill daily 14:00 schedule, deployed PAUSED. See `docs/decisions.md` (2026-11-22).
+- **Scheduled ingestion: schedule is live, but no runs since 2026-11-07.** Checked via the Jobs API on 2026-11-22: `ufcalendar-incremental` is bundle-deployed with `0 0 6 */3 * ?` Europe/Amsterdam, `UNPAUSED`. The 31 October, 1 and 7 November runs were `PERIODIC` (scheduler). Runs due on 4, 10, 13, 16, 19 and 22 November never appear. Cause unconfirmed; the 4 November "triggering new runs ... disabled" error suggests a Free Edition fair-usage block.
 - **Cloud access works.** The Default cloud environment can reach Databricks with `DATABRICKS_HOST` and `DATABRICKS_TOKEN` (SCIM check returned 200 after the host was allowlisted and the token regenerated). `api.ufcalendar.com` is blocked in the cloud environment, which is fine because the jobs call it from Databricks.
 - **Remote Control** is on for the tracker session (local, so the Mac must stay awake).
 
 ## Next
-1. Settle the job schedule: check the job in the Jobs UI, then deploy the schedule from `databricks.yml` (from a cloud session, using the environment's token).
-2. Decide how to finish the UFC backfill: stay on the free plan in small chunks, or take the one Hobby month (about 19,500 requests for UFC, PFL, OKTAGON, RIZIN) and run the backfill job. Check why the 4 November run stopped with `history_complete` False.
-3. Add alerting for missed scheduled runs (first raised on 2026-11-04, now confirmed to matter).
-4. Move the tracker and ingestion work to cloud sessions; archive the finished "MMA Intelligence Platform repo" session.
-5. Bronze Delta tables from the landing files (dedupe on natural key, latest `fetched_at` wins).
-6. Silver tables: clean titles and sponsor prefixes, flag Contender Series bouts.
-7. Phase 1 dashboard app, with the visible "Data by UFCalendar" link the terms require.
+1. Review and deploy the Hobby job changes (`databricks bundle deploy`), then check `/v1/usage` from a job or the laptop to confirm the Hobby limits and the quota reset date.
+2. Finish the UFC backfill: about 7 runs of 3,000 requests. Unpause the backfill schedule (or run it by hand) once deployed.
+3. Find out why scheduled runs stopped after 7 November: trigger one manual incremental run and see whether triggering is still blocked.
+4. Decide by about 28 November whether to keep Hobby for December (see `docs/decisions.md`, 2026-11-22). On downgrade, revert the incremental variables and pause the backfill schedule first.
+5. Add alerting for missed scheduled runs (first raised on 2026-11-04, now confirmed to matter).
+6. Bronze Delta tables from the landing files (dedupe on natural key, latest `fetched_at` wins).
+7. Silver tables: clean titles and sponsor prefixes, flag Contender Series bouts.
+8. Phase 1 dashboard app, with the visible "Data by UFCalendar" link the terms require.
 
 ## Open questions
 - Can Databricks Apps be opened by users outside the workspace on Free Edition?
@@ -36,7 +38,7 @@ Current phase: **1. Fighter stats foundation** (ingestion built, bronze to silve
 
 ## Known risks
 - Free Edition fair usage can block job runs for a day or more with no visible quota. The laptop fallback needs no Databricks compute.
-- The free UFCalendar key allows 1,000 requests/month, 10/minute.
+- The UFCalendar key is on Hobby (30,000/month, 60/minute) for now; the free plan allows 1,000/month, 10/minute, and the incremental settings must be reverted before a downgrade.
 
 ## How to update
 The tracker session reads this file, `CLAUDE.md`, the docs, the git log and the other sessions' transcripts, then edits this file. Rules: check claims against files, commits or job results before marking anything done, and label anything unverified as unconfirmed.
