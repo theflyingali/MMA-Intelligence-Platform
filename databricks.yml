@@ -69,13 +69,14 @@ resources:
     ufcalendar_backfill:
       name: ufcalendar-backfill
       description: >-
-        Full history in chunks of 3,000 requests (about 1 hour). Orgs run in the order given, so UFC
+        Full history in chunks of 3,000 requests (about 1 hour) by default; set the budget job parameter
+        higher for one long run (progress is saved every 25 requests, so a stopped run resumes). Orgs run in the order given, so UFC
         finishes before PFL, OKTAGON and RIZIN start. Run repeatedly until it fetches almost nothing.
         Refuses to run unless the key is on a plan with at least 30,000 requests/month (Hobby).
         To change scope or chunk size use "Run now with different parameters" on the job
         parameters below; do not override the task's python_params (that drops the plan guard).
       max_concurrent_runs: 1
-      timeout_seconds: 7200
+      timeout_seconds: 21600  # 6 h: room for one long run (budget up to about 18,000 at 55/min)
       parameters:
         - name: orgs
           default: ufc,pfl,oktagon,rizin
