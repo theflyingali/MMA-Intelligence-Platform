@@ -67,6 +67,12 @@ def _key_paths(obj: Any, prefix: str, depth: int, out: set[str]) -> None:
             _key_paths(item, prefix + "[]", depth, out)
 
 
+# Key paths are compared this many levels down. Fighters are depth 1 because `records` is keyed by
+# record type (amateur_mma, pro_mma, ufc, ...): those keys are data, and at depth 2 they gave 39
+# fingerprints across 192 fighters, which would drown any real drift signal.
+FINGERPRINT_DEPTH = {"fighter": 1}
+
+
 def fingerprint(data: Any, depth: int = 2) -> str:
     """Short hash of the key paths in `data` down to `depth` levels (lists are merged)."""
     paths: set[str] = set()
@@ -129,7 +135,7 @@ def parse_envelope(endpoint: str, text: str | None, name_id: int | None = None) 
             payload=_dumps(payload), org=org if isinstance(org, str) else None,
             slug=slug if isinstance(slug, str) else None,
             starts_at=starts_at if isinstance(starts_at, str) else None,
-            fingerprint=fingerprint(fp_source),
+            fingerprint=fingerprint(fp_source, FINGERPRINT_DEPTH.get(endpoint, 2)),
         )
 
     data = resp.get("data")

@@ -87,6 +87,17 @@ def test_fingerprint_ignores_values_and_list_length():
     assert fingerprint(one) == fingerprint(many)
 
 
+def test_fighter_fingerprint_ignores_keys_that_are_data():
+    """`records` is keyed by record type, so fighters with different records share one fingerprint."""
+    a, b = fighter_resp(1), fighter_resp(2)
+    a["data"]["records"] = {"pro_mma": {"wins": 1}, "ufc": {"wins": 1}}
+    b["data"]["records"] = {"amateur_mma": {"wins": 2}, "pro_submission_grappling": {"wins": 0}}
+    fa = parse_envelope("fighter", envelope(a)).rows[0].fingerprint
+    assert fa == parse_envelope("fighter", envelope(b)).rows[0].fingerprint
+    b["data"]["new_top_level_field"] = 1  # a real schema change still shows
+    assert fa != parse_envelope("fighter", envelope(b)).rows[0].fingerprint
+
+
 def test_canonical_ts_handles_offsets_and_fractions():
     assert canonical_ts("2026-10-24T14:00:00.000Z") == "2026-10-24T14:00:00Z"
     assert canonical_ts("2026-10-24T16:00:00+02:00") == "2026-10-24T14:00:00Z"
