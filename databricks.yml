@@ -17,20 +17,21 @@ variables:
   incremental_schedule_status:
     description: PAUSED or UNPAUSED
     default: UNPAUSED
-  # Plan-dependent settings. Hobby (30,000/month, 60/min) values below; on the free plan
-  # (1,000/month, 10/min) set incremental_orgs=ufc, incremental_rpm=8, incremental_budget=100.
+  # Plan-dependent settings. Free plan (1,000/month, 10/min) values below; on Hobby
+  # (30,000/month, 60/min) incremental_rpm=55, incremental_budget=600. Four orgs fit the free plan
+  # (rough estimate 500 to 700 requests/month); if quota runs short, set incremental_orgs=ufc.
   incremental_orgs:
     description: Comma-separated org slugs, in priority order
     default: ufc,pfl,oktagon,rizin
   incremental_rpm:
     description: Client-side requests per minute (keep below the plan limit)
-    default: "55"
+    default: "8"
   incremental_budget:
     description: Max API requests per incremental run
-    default: "600"
+    default: "100"
   backfill_schedule_status:
     description: PAUSED or UNPAUSED. UNPAUSED only while the key is on Hobby or above (Hobby until 2026-12-22).
-    default: UNPAUSED
+    default: PAUSED
 
 resources:
   jobs:
@@ -106,6 +107,27 @@ resources:
             dependencies:
               - requests>=2.32
               - python-dotenv>=1.0
+
+    landing_snapshot:
+      name: landing-snapshot
+      description: >-
+        Zip the UFCalendar landing folder into one dated archive under
+        /Volumes/mma/raw/landing/_snapshots for an offline backup. Read-only on the landing data;
+        no API calls. Run by hand; download the zip and commit it to the data-snapshots branch.
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      tasks:
+        - task_key: snapshot
+          environment_key: snapshot_env
+          spark_python_task:
+            python_file: ./jobs/snapshot_landing.py
+            parameters:
+              - --source=${var.landing_dir}
+              - --dest-dir=/Volumes/mma/raw/landing/_snapshots
+      environments:
+        - environment_key: snapshot_env
+          spec:
+            environment_version: "4"
 
 targets:
   default:
