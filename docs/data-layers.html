@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MMA Data Layers</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: one narrow reading column, each layer a figure that scrolls sideways on phones.
+   Colour: three layer hues (slate raw, bronze, silver-blue) plus one warning red used once. */
+:root {
+  --bg: #f6f6f3; --fg: #1d2127; --muted: #5a616b; --line: #c8ccd2;
+  --raw: #56636f; --raw-bg: #e9edf0;
+  --bronze: #9c5a24; --bronze-bg: #f5e8da;
+  --silver: #4d6d91; --silver-bg: #e4ecf4;
+  --warn: #b3261e; --card: #ffffff;
+  --display: "Space Grotesk", system-ui, sans-serif;
+  --body: "Inter", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14171b; --fg: #e6e8eb; --muted: #9aa2ac; --line: #3a4048;
+    --raw: #a6b6c4; --raw-bg: #212830;
+    --bronze: #e3a56d; --bronze-bg: #35271a;
+    --silver: #9fbbd9; --silver-bg: #1e2935;
+    --warn: #ff8f86; --card: #1a1e23; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14171b; --fg: #e6e8eb; --muted: #9aa2ac; --line: #3a4048;
+  --raw: #a6b6c4; --raw-bg: #212830;
+  --bronze: #e3a56d; --bronze-bg: #35271a;
+  --silver: #9fbbd9; --silver-bg: #1e2935;
+  --warn: #ff8f86; --card: #1a1e23; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.55;
+  padding-block: 28px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 44px; }
+header h1 { font-family: var(--display); font-weight: 700; font-size: clamp(26px, 4vw, 34px); line-height: 1.15; margin: 0 0 8px; text-wrap: balance; }
+header p { margin: 0; max-width: 62ch; color: var(--muted); }
+section { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+h2 { font-family: var(--display); font-weight: 500; font-size: 20px; margin: 0; display: flex; align-items: baseline; gap: 10px; }
+h2 .tag { font-family: var(--mono); font-size: 12px; font-weight: 600; padding: 2px 8px; border: 1.5px solid; border-radius: 3px; }
+.t-raw { color: var(--raw); } .t-bronze { color: var(--bronze); } .t-silver { color: var(--silver); }
+figure { margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--card); }
+.scroll svg { display: block; width: 100%; min-width: 880px; height: auto; color: var(--muted); }
+figcaption { max-width: 78ch; color: var(--muted); font-size: 14px; }
+figcaption strong { color: var(--fg); font-weight: 600; }
+/* SVG text and shapes */
+svg text { fill: var(--fg); font-family: var(--body); font-size: 11.5px; }
+svg .m { font-family: var(--mono); font-size: 11px; }
+svg .mb { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+svg .mu { fill: var(--muted); }
+svg .sm { font-size: 10.5px; }
+svg .col { fill: var(--muted); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; }
+svg .hd { font-weight: 600; font-size: 12.5px; }
+svg .warn { fill: var(--warn); }
+svg .ac { fill: var(--bronze); font-weight: 600; }
+svg .box-r { fill: var(--raw-bg); stroke: var(--raw); stroke-width: 1.4; }
+svg .box-b { fill: var(--bronze-bg); stroke: var(--bronze); stroke-width: 1.4; }
+svg .box-s { fill: var(--silver-bg); stroke: var(--silver); stroke-width: 1.4; }
+svg .box-n { fill: none; stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 5 4; }
+svg .ln { fill: none; stroke: currentColor; stroke-width: 1.5; }
+svg .lnd { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-dasharray: 4 3; }
+</style>
+</head>
+<body><div class="wrap">
+<header>
+  <h1>MMA Data Layers</h1>
+  <p>How UFCalendar data moves from raw files to bronze Delta tables to silver tables. Counts are from the full load of 23 November 2026, covering UFC, PFL, OKTAGON and RIZIN.</p>
+</header>
+
+<section>
+  <h2><span class="tag t-raw">RAW</span> Landing files</h2>
+  <figure>
+    <div class="scroll">
+<svg viewBox="0 0 1000 560" role="img" aria-label="Five UFCalendar API calls each write one JSON file per response into its own folder of the landing volume; the event call supplies the ids for the odds, rounds and fighter calls, and every file has the same four-field envelope.">
+<defs><marker id="a1" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker></defs>
+<text class="col" x="60" y="24">API call</text>
+<text class="col" x="340" y="24">Landing volume folder</text>
+<text class="col" x="670" y="24">Inside every file (same shape)</text>
+
+<!-- column A: API calls -->
+<rect class="box-r" x="60" y="40" width="210" height="64" rx="4"/>
+<text class="mb" x="72" y="66">GET /events</text><text class="mu" x="72" y="86">an org's completed events, paged</text>
+<rect class="box-r" x="60" y="122" width="210" height="64" rx="4"/>
+<text class="mb" x="72" y="148">GET /events/{id}</text><text class="mu" x="72" y="168">card, venue, bouts, results</text>
+<rect class="box-r" x="60" y="204" width="210" height="64" rx="4"/>
+<text class="mb" x="72" y="230">GET /events/{id}/odds</text><text class="mu" x="72" y="250">needs: the event id</text>
+<rect class="box-r" x="60" y="286" width="210" height="64" rx="4"/>
+<text class="mb" x="72" y="312">GET /fights/{id}/rounds</text><text class="mu" x="72" y="332">needs: fight ids on the card</text>
+<rect class="box-r" x="60" y="368" width="210" height="64" rx="4"/>
+<text class="mb" x="72" y="394">GET /fighters/{id}</text><text class="mu" x="72" y="414">needs: fighter ids on the card</text>
+
+<!-- dependency bracket: the event call feeds the three below -->
+<path class="ln" d="M60,154 H34 V400"/>
+<path class="ln" d="M34,236 H58" marker-end="url(#a1)"/>
+<path class="ln" d="M34,318 H58" marker-end="url(#a1)"/>
+<path class="ln" d="M34,400 H58" marker-end="url(#a1)"/>
+
+<!-- A to B -->
+<path class="ln" d="M270,72 H338" marker-end="url(#a1)"/><text class="mu sm" x="288" y="65">writes</text>
+<path class="ln" d="M270,154 H338" marker-end="url(#a1)"/><text class="mu sm" x="288" y="147">writes</text>
+<path class="ln" d="M270,236 H338" marker-end="url(#a1)"/><text class="mu sm" x="288" y="229">writes</text>
+<path class="ln" d="M270,318 H338" marker-end="url(#a1)"/><text class="mu sm" x="288" y="311">writes</text>
+<path class="ln" d="M270,400 H338" marker-end="url(#a1)"/><text class="mu sm" x="288" y="393">writes</text>
+
+<!-- column B: folders -->
+<rect class="box-r" x="340" y="40" width="290" height="64" rx="4"/>
+<text class="mb" x="352" y="64">events_list/   30 files</text><text class="m mu sm" x="352" y="86">ingest_date=…/{org}_completed_…_p1.json</text>
+<rect class="box-r" x="340" y="122" width="290" height="64" rx="4"/>
+<text class="mb" x="352" y="146">event/   1,263 files</text><text class="m mu sm" x="352" y="168">ingest_date=YYYY-MM-DD/{id}.json</text>
+<rect class="box-r" x="340" y="204" width="290" height="64" rx="4"/>
+<text class="mb" x="352" y="228">event_odds/   1,265 files</text><text class="m mu sm" x="352" y="250">ingest_date=YYYY-MM-DD/{id}.json</text>
+<rect class="box-r" x="340" y="286" width="290" height="64" rx="4"/>
+<text class="mb" x="352" y="310">fight_rounds/   13,090 files</text><text class="m mu sm" x="352" y="332">ingest_date=YYYY-MM-DD/{id}.json</text>
+<rect class="box-r" x="340" y="368" width="290" height="64" rx="4"/>
+<text class="mb" x="352" y="392">fighter/   5,369 files</text><text class="m mu sm" x="352" y="414">ingest_date=YYYY-MM-DD/{id}.json</text>
+
+<!-- B to C: every file has this shape -->
+<path class="lnd" d="M630,72 H650 M630,154 H650 M630,236 H650 M630,318 H650 M630,400 H650 M650,72 V400"/>
+<path class="ln" d="M650,170 H668" marker-end="url(#a1)"/>
+
+<!-- column C: envelope -->
+<rect class="box-r" x="670" y="40" width="310" height="262" rx="4"/>
+<text class="m" x="684" y="66">{</text>
+<text class="m" x="684" y="86">  "request_url": "…/fights/83288/rounds",</text>
+<text class="m" x="684" y="106">  "fetched_at": "2026-10-30T08:15:57Z",</text>
+<text class="m" x="684" y="126">  "http_status": 200,</text>
+<text class="m" x="684" y="146">  "response": { "data": […], "meta": {…} }</text>
+<text class="m" x="684" y="166">}</text>
+<text x="684" y="204">One file per API response.</text>
+<text x="684" y="224">Only HTTP 200 responses are landed.</text>
+<text x="684" y="244">A re-fetch is a new file on a later date.</text>
+<text x="684" y="264">Raw files are never modified.</text>
+<text class="mu" x="684" y="288">The newest fetched_at wins downstream.</text>
+
+<!-- not data -->
+<rect class="box-n" x="340" y="470" width="290" height="64" rx="4"/>
+<text class="m" x="352" y="496">_manifest.json  _lock.json  _runs/</text><text class="mu" x="352" y="516">run bookkeeping, never loaded as data</text>
+<text class="mu" x="60" y="506">Also in the volume</text>
+<text x="670" y="500" class="hd">21,017 data files</text>
+<text class="mu" x="670" y="520">across the five folders</text>
+</svg>
+    </div>
+    <figcaption><strong>One API call, one JSON file.</strong> The folders sit in <code>/Volumes/mma/raw/landing/ufcalendar/</code>. The event call is the only one that needs no input: it supplies the ids that the odds, round-stats and fighter calls then use, so a backfill fans out from events. Every file carries the same four-field envelope around the API response, and the manifest, lock and run logs sit beside the data folders.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2><span class="tag t-bronze">BRONZE</span> Delta tables, one row per key</h2>
+  <figure>
+    <div class="scroll">
+<svg viewBox="0 0 1000 592" role="img" aria-label="Bronze load pipeline: list files, skip those already loaded, parse, keep the latest fetch per key, merge. The ingest log records every file as loaded or rejected. Below, each landing folder maps to one bronze table; events_list pages explode into one row per event and re-fetched ids collapse to one row.">
+<defs><marker id="a2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker></defs>
+
+<!-- pipeline -->
+<rect class="box-b" x="25" y="40" width="170" height="84" rx="4"/>
+<text class="hd" x="37" y="62">1  List files</text><text class="mu" x="37" y="84">only the 5 endpoint folders,</text><text class="mu" x="37" y="100">*.json, with size and time</text>
+<rect class="box-b" x="220" y="40" width="170" height="84" rx="4"/>
+<text class="hd" x="232" y="62">2  Skip</text><text class="mu" x="232" y="84">already loaded (per log),</text><text class="mu" x="232" y="100">empty, or newer than 10 min</text>
+<rect class="box-b" x="415" y="40" width="170" height="84" rx="4"/>
+<text class="hd" x="427" y="62">3  Parse</text><text class="mu" x="427" y="84">envelope to rows; truncated,</text><text class="mu" x="427" y="100">empty or non-200 = rejected</text>
+<rect class="box-b" x="610" y="40" width="170" height="84" rx="4"/>
+<text class="hd" x="622" y="62">4  Latest wins</text><text class="mu" x="622" y="84">one row per key: fetched_at,</text><text class="mu" x="622" y="100">then file time, then path</text>
+<rect class="box-b" x="805" y="40" width="170" height="84" rx="4"/>
+<text class="hd" x="817" y="62">5  MERGE</text><text class="mu" x="817" y="84">insert new keys; update only</text><text class="mu" x="817" y="100">if not older (safe to rerun)</text>
+<path class="ln" d="M195,82 H218" marker-end="url(#a2)"/>
+<path class="ln" d="M390,82 H413" marker-end="url(#a2)"/>
+<path class="ln" d="M585,82 H608" marker-end="url(#a2)"/>
+<path class="ln" d="M780,82 H803" marker-end="url(#a2)"/>
+
+<!-- ingest log -->
+<rect class="box-b" x="220" y="168" width="395" height="52" rx="4"/>
+<text class="mb" x="232" y="190">ufcal_ingest_log</text><text class="mu" x="232" y="208">one row per file version: loaded, or rejected with a reason</text>
+<path class="ln" d="M300,168 V128" marker-end="url(#a2)"/><text class="mu sm" x="308" y="152">reads: what is already done</text>
+<path class="ln" d="M525,126 V166" marker-end="url(#a2)"/><text class="mu sm" x="533" y="152">writes: loaded, rejected</text>
+<path class="ln" d="M890,126 V234" marker-end="url(#a2)"/><text class="mu sm" x="898" y="190">into mma.bronze</text>
+
+<!-- result table -->
+<text class="col" x="25" y="258">Landing folder</text>
+<text class="col" x="335" y="258">Bronze table and key</text>
+<text class="col" x="650" y="258">What changed on the way</text>
+<text class="mu sm" x="650" y="236">Full load: 21,017 files in, 0 rejected</text>
+
+<rect class="box-r" x="25" y="272" width="240" height="46" rx="4"/><text class="mb" x="37" y="292">events_list/</text><text class="mu" x="37" y="309">30 files</text>
+<rect class="box-b" x="335" y="272" width="290" height="46" rx="4"/><text class="mb" x="347" y="292">ufcal_events_list</text><text class="mu" x="347" y="309">1,263 rows · key: event id</text>
+<path class="ln" d="M265,295 H333" marker-end="url(#a2)"/><text class="mu sm" x="280" y="288">merge</text>
+<text class="ac" x="650" y="291">A page of events becomes one row per event.</text>
+
+<rect class="box-r" x="25" y="330" width="240" height="46" rx="4"/><text class="mb" x="37" y="350">event/</text><text class="mu" x="37" y="367">1,263 files</text>
+<rect class="box-b" x="335" y="330" width="290" height="46" rx="4"/><text class="mb" x="347" y="350">ufcal_event</text><text class="mu" x="347" y="367">1,263 rows · key: event id</text>
+<path class="ln" d="M265,353 H333" marker-end="url(#a2)"/><text class="mu sm" x="280" y="346">merge</text>
+<text x="650" y="349">The payload holds the whole card, every bout.</text>
+
+<rect class="box-r" x="25" y="388" width="240" height="46" rx="4"/><text class="mb" x="37" y="408">event_odds/</text><text class="mu" x="37" y="425">1,265 files</text>
+<rect class="box-b" x="335" y="388" width="290" height="46" rx="4"/><text class="mb" x="347" y="408">ufcal_event_odds</text><text class="mu" x="347" y="425">1,263 rows · key: event id</text>
+<path class="ln" d="M265,411 H333" marker-end="url(#a2)"/><text class="mu sm" x="280" y="404">merge</text>
+<text class="ac" x="650" y="407">2 events were fetched twice: the latest is kept.</text>
+
+<rect class="box-r" x="25" y="446" width="240" height="46" rx="4"/><text class="mb" x="37" y="466">fight_rounds/</text><text class="mu" x="37" y="483">13,090 files</text>
+<rect class="box-b" x="335" y="446" width="290" height="46" rx="4"/><text class="mb" x="347" y="466">ufcal_fight_rounds</text><text class="mu" x="347" y="483">13,090 rows · key: fight id</text>
+<path class="ln" d="M265,469 H333" marker-end="url(#a2)"/><text class="mu sm" x="280" y="462">merge</text>
+<text x="650" y="465">The payload is the list of round-by-round rows.</text>
+
+<rect class="box-r" x="25" y="504" width="240" height="46" rx="4"/><text class="mb" x="37" y="524">fighter/</text><text class="mu" x="37" y="541">5,369 files</text>
+<rect class="box-b" x="335" y="504" width="290" height="46" rx="4"/><text class="mb" x="347" y="524">ufcal_fighter</text><text class="mu" x="347" y="541">5,322 rows · key: fighter id</text>
+<path class="ln" d="M265,527 H333" marker-end="url(#a2)"/><text class="mu sm" x="280" y="520">merge</text>
+<text class="ac" x="650" y="523">47 fighters were fetched again: the latest is kept.</text>
+
+<text class="mu sm" x="25" y="580">Every row also carries: fetched_at · payload (the raw JSON text) · org · slug · source_file · ingested_at · payload_fingerprint</text>
+</svg>
+    </div>
+    <figcaption><strong>Bronze keeps the raw payload and removes only duplication.</strong> A file is loaded once, tracked in the ingest log, and a re-fetch of the same id replaces the old row only if it is newer. Highlighted rows are where files and rows differ. Because the payload is stored whole, silver can always be rebuilt from bronze.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2><span class="tag t-silver">SILVER</span> Typed tables you can join</h2>
+  <figure>
+    <div class="scroll">
+<svg viewBox="0 0 1000 620" role="img" aria-label="Silver tables: event has many bouts; each bout has two fighter_bout rows, round_stats rows and an odds row, all joined by bout id; fighter_bout joins to fighter, which has fighter_record rows. The bout table carries a warning that corner A wins 96 to 97 percent of PFL and RIZIN bouts.">
+<defs><marker id="a3" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker></defs>
+
+<!-- event -->
+<rect class="box-s" x="30" y="40" width="230" height="118" rx="4"/>
+<text class="mb" x="42" y="64">event</text><text class="hd" x="42" y="84">1,263 · one per event</text>
+<text x="42" y="104">title cleaned, sponsor kept</text><text x="42" y="120">contender and official-UFC flags</text>
+<text class="m mu sm" x="42" y="146">from ufcal_event</text>
+
+<!-- bout -->
+<rect class="box-s" x="385" y="40" width="230" height="190" rx="4"/>
+<text class="mb" x="397" y="64">bout</text><text class="hd" x="397" y="84">13,239 · one per bout</text>
+<text x="397" y="104">outcome: a_win, b_win, draw,</text><text x="397" y="120">no_contest, cancelled, unknown</text>
+<text x="397" y="136">winner, loser, method, round</text>
+<text class="warn" x="397" y="164">Corner A wins 96% of PFL and</text><text class="warn" x="397" y="180">97% of RIZIN bouts: the source</text><text class="warn" x="397" y="196">lists winners first. Not a feature.</text>
+<text class="m mu sm" x="397" y="220">from ufcal_event (the card)</text>
+
+<!-- fighter_bout -->
+<rect class="box-s" x="740" y="40" width="230" height="118" rx="4"/>
+<text class="mb" x="752" y="64">fighter_bout</text><text class="hd" x="752" y="84">26,178 · two per fought bout</text>
+<text x="752" y="104">result: win, loss, draw, no_contest</text><text x="752" y="120">cancelled bouts excluded</text>
+<text class="m mu sm" x="752" y="146">built from bout</text>
+
+<!-- event to bout, bout to fighter_bout -->
+<path class="ln" d="M260,99 H383" marker-end="url(#a3)"/><text class="sm" x="276" y="90">event_id</text><text class="mu sm" x="276" y="116">1 to many bouts</text>
+<path class="ln" d="M615,99 H738" marker-end="url(#a3)"/><text class="sm" x="634" y="90">bout_id</text><text class="mu sm" x="634" y="116">2 rows per bout</text>
+
+<!-- round_stats and odds branch off bout -->
+<path class="ln" d="M500,230 V285 M235,285 H535"/>
+<path class="ln" d="M235,285 V328" marker-end="url(#a3)"/>
+<path class="ln" d="M535,285 V328" marker-end="url(#a3)"/>
+<text class="sm" x="512" y="276">fight_id = bout_id</text>
+
+<rect class="box-s" x="120" y="330" width="230" height="118" rx="4"/>
+<text class="mb" x="132" y="354">round_stats</text><text class="hd" x="132" y="374">57,321 · fight, round, fighter</text>
+<text x="132" y="394">strikes, takedowns, control time</text><text x="132" y="410">detail columns mostly null</text>
+<text class="m mu sm" x="132" y="436">from ufcal_fight_rounds</text>
+
+<rect class="box-s" x="420" y="330" width="230" height="118" rx="4"/>
+<text class="mb" x="432" y="354">odds</text><text class="hd" x="432" y="374">13,090 · one per fight</text>
+<text x="432" y="394">consensus, opening, closing</text><text x="432" y="410">implied and fair probability</text>
+<text class="m mu sm" x="432" y="436">from ufcal_event_odds</text>
+
+<!-- fighter side -->
+<path class="ln" d="M855,158 V328" marker-end="url(#a3)"/><text class="sm" x="865" y="246">fighter_id</text>
+<rect class="box-s" x="740" y="330" width="230" height="118" rx="4"/>
+<text class="mb" x="752" y="354">fighter</text><text class="hd" x="752" y="374">5,322 · one per fighter</text>
+<text x="752" y="394">cm, date of birth, career stats</text><text x="752" y="410">power rating, UFC and pro records</text>
+<text class="m mu sm" x="752" y="436">from ufcal_fighter</text>
+
+<path class="ln" d="M855,448 V498" marker-end="url(#a3)"/><text class="sm" x="865" y="478">fighter_id</text>
+<rect class="box-s" x="740" y="500" width="230" height="100" rx="4"/>
+<text class="mb" x="752" y="524">fighter_record</text><text class="hd" x="752" y="544">13,660 · fighter and record type</text>
+<text x="752" y="564">pro_mma, ufc, amateur_mma, …</text><text class="m mu sm" x="752" y="588">from ufcal_fighter</text>
+
+<!-- how updates flow -->
+<text class="hd" x="30" y="506">How updates flow</text>
+<text class="mu" x="30" y="528">A changed bronze row replaces its child rows:</text>
+<text class="mu" x="30" y="544">event to bouts, fight to rounds, fighter to records.</text>
+<text class="mu" x="30" y="560">Parent tables are written last, so a stopped</text>
+<text class="mu" x="30" y="576">run is simply picked up again.</text>
+</svg>
+    </div>
+    <figcaption><strong>The bout is the hub.</strong> Everything about a fight joins on its id, and fighter_bout gives two rows per fought bout so questions like a fighter's record or a head-to-head need no unions. Every key is unique. The red note is a data finding: corner is not a neutral side for every organisation, so the prediction model must build features from fighter history instead.</figcaption>
+  </figure>
+</section>
+</div>
+</body>
+</html>
