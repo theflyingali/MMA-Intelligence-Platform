@@ -61,6 +61,16 @@ round or odds rows without a bout, card fighters missing from `fighter`, fighter
 birth, sponsor prefixes stripped, and leads for review. Missing round stats are expected for old
 events and for files still inside bronze's quiet window.
 
+## Known data caveats (found on the full history, 2026-11-23)
+- **Corner A is not a neutral side for every org.** Share of decided bouts won from corner A: PFL 96%,
+  RIZIN 97%, OKTAGON 66%, UFC 63%. PFL and RIZIN appear to list the winner first, so `fighter_a`,
+  `corner` and `a_win` must not be used as features for the prediction model (label leakage). The
+  report prints `a_win_share_by_org` every run.
+- Some events have empty cards at the source (5 of 1,263, e.g. `OKTAGON TIME`), and one is titled
+  "(cancelled)" while its status is `completed`.
+- About 6% of played bouts have no round stats (UFC 1994 to 98, early PFL, OKTAGON and RIZIN years).
+- One UFC bout (83820) is a completed split decision with no winner upstream; its outcome is `unknown`.
+
 ## Tests
 `python -m pytest tests -q` runs the title rules. `tests/test_silver_spark_local.py` runs bronze and
 silver end to end on local Spark and Delta (skips without `pyspark` and `delta-spark`; about 4 minutes).

@@ -263,10 +263,23 @@ def dedupe(df: Any, keys: tuple[str, ...]) -> Any:
 
 # ---- merge -------------------------------------------------------------------------------------
 
-def ensure_table(spark: Any, name: str, df: Any) -> None:
-    """Create the silver table from the transform's schema (so the code is the one place columns live)."""
+def ensure_table(spark: Any, name: str, df: Any) -> list[str]:
+    """Create the silver table from the transform's schema (so the code is the one place columns live).
+
+    If the table exists and the transform now produces extra columns, add them with ALTER TABLE.
+    (Serverless compute does not allow the `autoMerge` setting, so schema evolution is explicit.)
+    Returns the names of added columns.
+    """
     if not spark.catalog.tableExists(name):
         df.limit(0).writeTo(name).using("delta").create()
+        return []
+    existing = {c.lower() for c in spark.table(name).columns}
+    new = [f for f in df.schema.fields if f.name.lower() not in existing]
+    if new:
+        cols = ", ".join(f"`{f.name}` {f.dataType.simpleString()}" for f in new)
+        spark.sql(f"ALTER TABLE {name} ADD COLUMNS ({cols})")
+        log.info("added columns to %s: %s", name, [f.name for f in new])
+    return [f.name for f in new]
 
 
 def merge_table(spark: Any, catalog: str, tgt: str, table: str, df: Any) -> dict[str, int]:
@@ -302,7 +315,6 @@ def run_build(spark: Any, catalog: str, src: str, tgt: str, full_refresh: bool, 
     """Build every silver table from bronze. Children first; each parent table last."""
     from pyspark.sql import functions as F
 
-    spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
     if not dry_run:
         spark.sql(f"CREATE SCHEMA IF NOT EXISTS {catalog}.{tgt} COMMENT 'Silver: typed and cleaned UFCalendar tables'")
     if full_refresh and not dry_run:
@@ -372,4 +384,9 @@ def dq_report(spark: Any, catalog: str, tgt: str) -> dict[str, Any]:
             f"SELECT DISTINCT title_lead_unreviewed FROM {t['event']} WHERE title_lead_unreviewed IS NOT NULL "
             "ORDER BY 1 LIMIT 50").collect()],
     }
-    return {"row_counts": counts, "checks": checks, "titles": titles}
+    # Share of decided bouts won from corner A. Near 50% means a neutral side; near 100% means the source
+    # lists the winner first for that org, so corner / fighter_a must not be used as a model feature.
+    a_share = [[r[0], float(r[1]), int(r[2])] for r in spark.sql(
+        f"SELECT org, round(avg(CASE WHEN outcome = 'a_win' THEN 1.0 ELSE 0.0 END), 3), count(*) "
+        f"FROM {t['bout']} WHERE outcome IN ('a_win','b_win') GROUP BY org ORDER BY org").collect()]
+    return {"row_counts": counts, "checks": checks, "a_win_share_by_org": a_share, "titles": titles}

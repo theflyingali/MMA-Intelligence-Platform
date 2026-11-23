@@ -28,9 +28,15 @@ def test_unknown_lead_is_kept_and_reported_for_review():
 
 
 @pytest.mark.parametrize("title", ["The Ultimate Fighter Finale: A Champion Will Be Crowned", "DWCS Brazil 1.2",
-                                   "Dana White's Tuesday Night Contender Series 12", "PFL 1", "OKTAGON 60", "RIZIN 40"])
+                                   "Dana White's Tuesday Night Contender Series 12", "PFL 1", "OKTAGON 60", "RIZIN 40",
+                                   "Rizin 1 - Rizin Fighting Grand Prix", "Professional Fighters League - 2019 Season",
+                                   "PFL 10: 2023 Playoffs - PFL Championship", "Oktagon MMA - Oktagon 5"])
 def test_titles_with_brand_first_or_no_brand_have_no_lead(title):
     assert clean_title(title).lead_unreviewed is None and clean_title(title).clean == title
+
+
+def test_lead_before_a_brand_in_another_org_is_reported():
+    assert clean_title("East PRO Fight - Powered by Oktagon").lead_unreviewed == "East PRO Fight - Powered by"
 
 
 def test_none_title():

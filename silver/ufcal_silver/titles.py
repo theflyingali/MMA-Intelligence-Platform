@@ -14,10 +14,14 @@ from dataclasses import dataclass
 KNOWN_SPONSORS = ("Crypto.com", "VeChain", "Polymarket")
 # Leads that are part of the event name, not sponsors: not reported for review.
 KNOWN_NON_SPONSOR_LEADS = ("noche", "road to")
-BRANDS = ("Dana White's", "UFC", "PFL", "OKTAGON", "RIZIN", "DWCS", "The Ultimate Fighter")
+BRANDS = ("Dana White's", "UFC", "PFL", "Professional Fighters League", "OKTAGON", "RIZIN", "DWCS",
+          "The Ultimate Fighter")
 
 SPONSOR_PATTERN = r"(?i)^(" + "|".join(re.escape(s) for s in KNOWN_SPONSORS) + r")\s+"
-LEAD_PATTERN = r"(?i)^(.+?)\s+(?:" + "|".join(re.escape(b) for b in BRANDS) + r")\b"
+_BRAND_ALT = "|".join(re.escape(b) for b in BRANDS)
+# A lead exists only when the title does NOT start with a brand and a brand appears later. Without the
+# lookahead, `Rizin 1 - Rizin Fighting Grand Prix` or `PFL 10: 2023 ... PFL` were reported as leads.
+LEAD_PATTERN = r"(?i)^(?!(?:" + _BRAND_ALT + r")\b)(.+?)\s+(?:" + _BRAND_ALT + r")\b"
 CONTENDER_PATTERN = r"(?i)dwcs|contender series"
 
 

@@ -115,6 +115,8 @@ def test_bronze_to_silver_incremental_refetch_and_full_refresh(spark, landing, c
     assert checks["bouts_with_unknown_outcome"] == 0 and checks["events_without_bouts"] == 0
     assert checks["bout_fighters_without_fighter_row"] == 0
     assert first["data_quality"]["titles"]["sponsor_prefixes_stripped"] == [["Crypto.com", 1]]
+    assert first["data_quality"]["titles"]["leads_for_review"] == []
+    assert first["data_quality"]["a_win_share_by_org"] == [["rizin", 1.0, 1], ["ufc", 0.5, 2]]
 
     # Rerun: nothing changed, nothing rewritten.
     second = silver(spark, capsys)
@@ -152,3 +154,14 @@ def test_dry_run_changes_nothing(spark, landing, capsys):
     out = silver(spark, capsys, "--target-schema", "s_silver_never", "--dry-run")
     assert out["changed_bronze_rows"]["events"] == 3 and "merged" not in out
     assert not spark.catalog.databaseExists("s_silver_never")
+
+
+def test_a_new_column_is_added_to_an_existing_table(spark):
+    """Serverless forbids Delta autoMerge, so silver adds new columns itself before merging."""
+    from silver.ufcal_silver.build import ensure_table
+
+    name = f"{CAT}.{SLV}.evolve_demo"
+    assert ensure_table(spark, name, spark.createDataFrame([(1,)], "a INT")) == []
+    added = ensure_table(spark, name, spark.createDataFrame([(1, "x")], "a INT, b STRING"))
+    assert added == ["b"] and spark.table(name).columns == ["a", "b"]
+    assert ensure_table(spark, name, spark.createDataFrame([(1, "x")], "a INT, b STRING")) == []
