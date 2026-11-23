@@ -24,7 +24,7 @@ Current phase: **1. Fighter stats foundation** (ingestion built, bronze to silve
 
 ## Next
 1. Check the first scheduled incremental run after the deploy, due 2026-11-25 06:00 Amsterdam (UFC only, budget 100, 8/min): did it trigger, requests used, stop reason.
-2. Decide by about 19 December whether to renew Hobby (see `docs/decisions.md`, 2026-11-22). On downgrade, revert the incremental variables and pause the backfill schedule first.
+2. Decide by about 19 December whether to renew Hobby (see `docs/decisions.md`, 2026-11-22). Jobs are already on free-plan settings, so letting it lapse needs no change.
 3. Add alerting for missed scheduled runs, or a backup trigger outside Databricks (e.g. a GitHub Actions cron calling `jobs run-now`).
 4. Bronze Delta tables from the landing files (dedupe on natural key, latest `fetched_at` wins).
 5. Silver tables: clean titles and sponsor prefixes, flag Contender Series bouts.
