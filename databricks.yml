@@ -108,6 +108,27 @@ resources:
               - requests>=2.32
               - python-dotenv>=1.0
 
+    landing_snapshot:
+      name: landing-snapshot
+      description: >-
+        Zip the UFCalendar landing folder into one dated archive under
+        /Volumes/mma/raw/landing/_snapshots for an offline backup. Read-only on the landing data;
+        no API calls. Run by hand; download the zip and commit it to the data-snapshots branch.
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      tasks:
+        - task_key: snapshot
+          environment_key: snapshot_env
+          spark_python_task:
+            python_file: ./jobs/snapshot_landing.py
+            parameters:
+              - --source=${var.landing_dir}
+              - --dest-dir=/Volumes/mma/raw/landing/_snapshots
+      environments:
+        - environment_key: snapshot_env
+          spec:
+            environment_version: "4"
+
 targets:
   default:
     default: true
