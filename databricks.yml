@@ -18,10 +18,11 @@ variables:
     description: PAUSED or UNPAUSED
     default: UNPAUSED
   # Plan-dependent settings. Free plan (1,000/month, 10/min) values below; on Hobby
-  # (30,000/month, 60/min) incremental_orgs=ufc,pfl,oktagon,rizin, incremental_rpm=55, incremental_budget=600.
+  # (30,000/month, 60/min) incremental_rpm=55, incremental_budget=600. Four orgs fit the free plan
+  # (rough estimate 500 to 700 requests/month); if quota runs short, set incremental_orgs=ufc.
   incremental_orgs:
     description: Comma-separated org slugs, in priority order
-    default: ufc
+    default: ufc,pfl,oktagon,rizin
   incremental_rpm:
     description: Client-side requests per minute (keep below the plan limit)
     default: "8"

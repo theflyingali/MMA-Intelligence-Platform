@@ -13,7 +13,7 @@ Current phase: **1. Fighter stats foundation** (ingestion built, bronze to silve
 - 2026-10-30: Ingestion moved to Databricks serverless jobs via an Asset Bundle (`ufcalendar-incremental`, `ufcalendar-backfill`); laptop kept as fallback.
 
 ## In progress
-- **Jobs back on free-plan settings (deployed 2026-11-23).** Backfill schedule PAUSED; incremental back to UFC only, budget 100, 8/min (every third day, 06:00 Amsterdam, UNPAUSED). Other orgs are not kept current on the free plan; widen `incremental_orgs` if a renewed Hobby plan or spare free quota allows.
+- **Jobs back on free-plan settings (deployed 2026-11-23).** Backfill schedule PAUSED; incremental on all four orgs (UFC, PFL, OKTAGON, RIZIN; 10 latest events each) with budget 100, 8/min (every third day, 06:00 Amsterdam, UNPAUSED). Watch monthly usage; fall back to `incremental_orgs=ufc` if the 1,000 free requests run short.
 - **Historical backfill: complete (2026-11-22).** The long run (13:57Z to 18:10Z, 13,936 of 16,000 requests, stop reason `completed`, 0 errors, 0 404s) set `history_complete` True for UFC, PFL, OKTAGON and RIZIN. Manifest: 1,263 events with odds, 13,090 bouts with round stats, 5,322 fighters. The three runs on 22 November used 19,936 requests (estimate about 19,500); 10,064 Hobby quota left until 2026-12-22.
 - **Earlier backfill stop (2026-11-04), cause found.** The `ufcalendar-backfill` run of 2026-11-04 was a manual run with overridden free-plan parameters (`--org=ufc --budget=650 --rpm=8 --quota-reserve=250`, no plan guard). It stopped cleanly on its 650-request budget after one list page, which exits 0 and shows SUCCESS; `history_complete` is only set after the last list page. Manifest as of 2026-11-07: 36 events, 372 bouts with round stats, 626 fighters. Details in `docs/learning-log.md`.
 - **UFCalendar key on Hobby** (30,000/month, 60/min) until the quota resets on 2026-12-22 (owner confirmed; the backfill's 30,000 plan guard passed on 2026-11-22).
@@ -23,7 +23,7 @@ Current phase: **1. Fighter stats foundation** (ingestion built, bronze to silve
 - **Tracker session runs in the cloud** (since 2026-11-22), so the Mac no longer needs to stay awake. The old local tracker and ingestion sessions are archived; whether a Remote Control process is still running on the Mac is unconfirmed.
 
 ## Next
-1. Check the first scheduled incremental run after the deploy, due 2026-11-25 06:00 Amsterdam (UFC only, budget 100, 8/min): did it trigger, requests used, stop reason.
+1. Check the first scheduled incremental run after the deploy, due 2026-11-25 06:00 Amsterdam (four orgs, budget 100, 8/min): did it trigger, requests used, stop reason.
 2. Decide by about 19 December whether to renew Hobby (see `docs/decisions.md`, 2026-11-22). Jobs are already on free-plan settings, so letting it lapse needs no change.
 3. Add alerting for missed scheduled runs, or a backup trigger outside Databricks (e.g. a GitHub Actions cron calling `jobs run-now`).
 4. Bronze Delta tables from the landing files (dedupe on natural key, latest `fetched_at` wins).
