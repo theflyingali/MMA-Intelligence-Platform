@@ -1,0 +1,9 @@
+[client]
+# Hide developer options from viewers.
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false
+
+[server]
+headless = true
