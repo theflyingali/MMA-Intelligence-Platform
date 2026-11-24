@@ -237,7 +237,7 @@ svg .lnd { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-dasharray
 <text class="mb" x="397" y="64">bout</text><text class="hd" x="397" y="84">13,239 · one per bout</text>
 <text x="397" y="104">outcome: a_win, b_win, draw,</text><text x="397" y="120">no_contest, cancelled, unknown</text>
 <text x="397" y="136">winner, loser, method, round</text>
-<text class="warn" x="397" y="164">Corner A wins 96% of PFL and</text><text class="warn" x="397" y="180">97% of RIZIN bouts: the source</text><text class="warn" x="397" y="196">lists winners first. Not a feature.</text>
+<text class="warn" x="397" y="164">Corner A wins ~100% of UFC pre-</text><text class="warn" x="397" y="180">2010, PFL and RIZIN bouts: the</text><text class="warn" x="397" y="196">source lists winners first.</text>
 <text class="m mu sm" x="397" y="220">from ufcal_event (the card)</text>
 
 <!-- fighter_bout -->
@@ -286,7 +286,7 @@ svg .lnd { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-dasharray
 <text class="mu" x="30" y="576">run is simply picked up again.</text>
 </svg>
     </div>
-    <figcaption><strong>The bout is the hub.</strong> Everything about a fight joins on its id, and fighter_bout gives two rows per fought bout so questions like a fighter's record or a head-to-head need no unions. Every key is unique. The red note is a data finding: corner is not a neutral side for every organisation, so the prediction model must build features from fighter history instead.</figcaption>
+    <figcaption><strong>The bout is the hub.</strong> Everything about a fight joins on its id, and fighter_bout gives two rows per fought bout so questions like a fighter's record or a head-to-head need no unions. Every key is unique. The red note is a data finding: in parts of the data corner A is simply the listed winner (UFC before 2010, PFL, RIZIN), so corner can never be a prediction feature and the model must build features from fighter history instead.</figcaption>
   </figure>
 </section>
 </div>

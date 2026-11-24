@@ -69,10 +69,17 @@ birth, sponsor prefixes stripped, and leads for review. Missing round stats are 
 events and for files still inside bronze's quiet window.
 
 ## Known data caveats (found on the full history, 2026-11-23)
-- **Corner A is not a neutral side for every org.** Share of decided bouts won from corner A: PFL 96%,
-  RIZIN 97%, OKTAGON 66%, UFC 63%. PFL and RIZIN appear to list the winner first, so `fighter_a`,
-  `corner` and `a_win` must not be used as features for the prediction model (label leakage). The
-  report prints `a_win_share_by_org` every run.
+- **Corner A is not a real corner in parts of the data.** Share of decided bouts won from corner A,
+  by period (checked by year on 2026-11-24): UFC 100% up to 2009 and 54 to 63% from 2010; PFL 99 to 100%
+  for 2017 to 2025 and 79% in 2026; RIZIN 100% for 2015 to 2025 and 79% in 2026; OKTAGON 76 to 100% for
+  2016 to 2018 and 61 to 70% from 2019. A real corner would sit near 50% (or somewhat higher if corner A
+  goes to the favourite), so where it is about 100% the source simply lists the winner first. Rules:
+  never use `fighter_a`, `corner` or `a_win` as model features (label leakage); do not show corner labels
+  or corner-based stats for UFC before 2010, for PFL, for RIZIN (2026 is 79%, unexplained) or for OKTAGON
+  before 2019, show winner and loser only. For UFC from 2010 and OKTAGON from 2019 the corner looks real,
+  but corner A still wins about 55 to 65% (probably the favourite or higher-ranked fighter; unverified),
+  so never present corner win rate as a performance stat. The report prints `a_win_share_by_org` every
+  run, but that is an average per org and hides period breaks like UFC 2009 to 2010: check by year.
 - Some events have empty cards at the source (5 of 1,263). Two are cancelled or postponed
   (`title_says_cancelled`); the other three (`OKTAGON TIME` x2, `OKTAGON SUMMER FEST`) are simply empty.
 - About 6% of played bouts have no round stats (UFC 1994 to 98, early PFL, OKTAGON and RIZIN years).
