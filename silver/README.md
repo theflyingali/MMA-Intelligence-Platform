@@ -8,8 +8,8 @@ payload, so silver can always be rebuilt (`--full-refresh`).
 | Table | Grain | Notes |
 |---|---|---|
 | `event` | event | `title_raw`, `title_clean`, `title_sponsor`, `title_lead_unreviewed`, `is_contender_series`, `is_official_ufc`, `title_says_cancelled`, typed times, venue columns, `card_size` |
-| `bout` | bout | Exploded from the card. `outcome` is `a_win`, `b_win`, `draw`, `no_contest`, `cancelled` or `unknown`; winner and loser ids; method, end round and seconds |
-| `fighter_bout` | fighter and bout | Two rows per fought bout (win, loss, draw, no contest); cancelled bouts excluded. Best table for "ask the stats" |
+| `bout` | bout | Exploded from the card, with `corner_reliable`. `outcome` is `a_win`, `b_win`, `draw`, `no_contest`, `cancelled` or `unknown`; winner and loser ids; method, end round and seconds |
+| `fighter_bout` | fighter and bout | Two rows per fought bout (with `corner_reliable`) (win, loss, draw, no contest); cancelled bouts excluded. Best table for "ask the stats" |
 | `round_stats` | fight, round, fighter | Typed. The detailed strike and time columns are mostly null today (about 80% in the sample) |
 | `odds` | fight | Consensus, opening and closing prices for both sides, fair probability, movement. Props stay in bronze |
 | `fighter` | fighter | Inches to cm, `dob` as a date, numeric career stats, power index, UFC and pro MMA records |
@@ -72,14 +72,15 @@ events and for files still inside bronze's quiet window.
 - **Corner A is not a real corner in parts of the data.** Share of decided bouts won from corner A,
   by period (checked by year on 2026-11-24): UFC 100% up to 2009 and 54 to 63% from 2010; PFL 99 to 100%
   for 2017 to 2025 and 79% in 2026; RIZIN 100% for 2015 to 2025 and 79% in 2026; OKTAGON 76 to 100% for
-  2016 to 2018 and 61 to 70% from 2019. A real corner would sit near 50% (or somewhat higher if corner A
-  goes to the favourite), so where it is about 100% the source simply lists the winner first. Rules:
-  never use `fighter_a`, `corner` or `a_win` as model features (label leakage); do not show corner labels
-  or corner-based stats for UFC before 2010, for PFL, for RIZIN (2026 is 79%, unexplained) or for OKTAGON
-  before 2019, show winner and loser only. For UFC from 2010 and OKTAGON from 2019 the corner looks real,
-  but corner A still wins about 55 to 65% (probably the favourite or higher-ranked fighter; unverified),
-  so never present corner win rate as a performance stat. The report prints `a_win_share_by_org` every
-  run, but that is an average per org and hides period breaks like UFC 2009 to 2010: check by year.
+  2016 to 2018 and 61 to 70% from 2019. Where it is about 100% the source simply lists the winner first.
+  `bout` and `fighter_bout` carry a boolean **`corner_reliable`** (rule in `ufcal_silver/corner.py`: UFC
+  from 2010, OKTAGON from 2019, never PFL or RIZIN, unknown orgs false). Use it like this:
+  never use `fighter_a`, `corner` or `a_win` as model features (label leakage, even where reliable);
+  show corner labels only where `corner_reliable` is true, and winner and loser only elsewhere; even
+  where it is reliable corner A wins about 55 to 65% (probably the favourite or higher-ranked fighter;
+  unverified), so never present corner win rate as a performance stat. The OKTAGON cutoff is a softer
+  break than UFC's and is provisional. The report prints `a_win_share_by_corner_reliable` and a check,
+  `corner_reliable_org_years_skewed`, that counts reliable org-years above 80% (should be 0).
 - Some events have empty cards at the source (5 of 1,263). Two are cancelled or postponed
   (`title_says_cancelled`); the other three (`OKTAGON TIME` x2, `OKTAGON SUMMER FEST`) are simply empty.
 - About 6% of played bouts have no round stats (UFC 1994 to 98, early PFL, OKTAGON and RIZIN years).
