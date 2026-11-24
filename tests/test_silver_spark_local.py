@@ -38,7 +38,7 @@ def landing(tmp_path_factory) -> Path:
         bout(102, 5, 6, winner=None, method_norm="draw", method="Draw (Majority)", rnd=3)]))
     put(root, f"event/{D1}/11.json", event(11, "ufc", "ufc-dwcs-95-2026-10-06", "Dana White's Contender Series 95",
                                           [bout(200, 7, 8, winner=8)]))
-    put(root, f"event/{D1}/12.json", event(12, "rizin", "rizin-50-2026-10-10", "RIZIN 50", [bout(300, 9, 10, winner=9)]))
+    put(root, f"event/{D1}/12.json", event(12, "rizin", "rizin-50-2026-10-10", "RIZIN 50 (cancelled)", [bout(300, 9, 10, winner=9)]))
     put(root, f"event_odds/{D1}/10.json", odds(10, [(100, 1, 2), (102, 5, 6)]))
     put(root, f"event_odds/{D1}/11.json", odds(11, [(200, 7, 8), (999, 7, 8)]))  # 999 is not on any card
     for fid, a, b in ((100, 1, 2), (200, 7, 8), (300, 9, 10)):
@@ -77,6 +77,7 @@ def test_bronze_to_silver_incremental_refetch_and_full_refresh(spark, landing, c
         "Crypto.com UFC 331", "UFC 331", "Crypto.com")
     assert [ev[i]["is_contender_series"] for i in (10, 11, 12)] == [False, True, False]
     assert [ev[i]["is_official_ufc"] for i in (10, 11, 12)] == [True, False, False]
+    assert [ev[i]["title_says_cancelled"] for i in (10, 11, 12)] == [False, False, True]
     assert ev[10]["venue_city"] == "Edmonton" and ev[10]["card_size"] == 3 and ev[10]["starts_at"] is not None
 
     # Bouts: outcome, winner and loser, draw has no winner, cancelled has no result.

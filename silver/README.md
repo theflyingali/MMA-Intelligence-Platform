@@ -7,7 +7,7 @@ payload, so silver can always be rebuilt (`--full-refresh`).
 ## Tables
 | Table | Grain | Notes |
 |---|---|---|
-| `event` | event | `title_raw`, `title_clean`, `title_sponsor`, `title_lead_unreviewed`, `is_contender_series`, `is_official_ufc`, typed times, venue columns, `card_size` |
+| `event` | event | `title_raw`, `title_clean`, `title_sponsor`, `title_lead_unreviewed`, `is_contender_series`, `is_official_ufc`, `title_says_cancelled`, typed times, venue columns, `card_size` |
 | `bout` | bout | Exploded from the card. `outcome` is `a_win`, `b_win`, `draw`, `no_contest`, `cancelled` or `unknown`; winner and loser ids; method, end round and seconds |
 | `fighter_bout` | fighter and bout | Two rows per fought bout (win, loss, draw, no contest); cancelled bouts excluded. Best table for "ask the stats" |
 | `round_stats` | fight, round, fighter | Typed. The detailed strike and time columns are mostly null today (about 80% in the sample) |
@@ -20,8 +20,15 @@ Every row carries `fetched_at` and `_bronze_ingested_at`.
 ## Cleaning rules
 - **Sponsor prefixes:** only `Crypto.com`, `VeChain` and `Polymarket` are stripped (`title_raw` is kept,
   the prefix goes to `title_sponsor`). Other leads before a brand are kept and listed in
-  `title_lead_unreviewed`, except known event-name leads (`Noche UFC`, `Road to UFC`). Extend
-  `KNOWN_SPONSORS` in `ufcal_silver/titles.py` after reviewing the report on the full history.
+  `title_lead_unreviewed`, except known event-name leads (`Noche UFC`, `Road to UFC`, `Super RIZIN`,
+  `East PRO Fight - Powered by OKTAGON MMA`). The full history (1,263 titles) was reviewed on
+  2026-11-24: only the three sponsors above exist and the report is empty. A new lead appearing in
+  the report after a later load means a new sponsor or event name to decide on; add it to
+  `KNOWN_SPONSORS` or `KNOWN_NON_SPONSOR_LEADS` in `ufcal_silver/titles.py`.
+- **Cancelled events:** the source lists some cancelled or postponed events as `completed` with an
+  empty card. `title_says_cancelled` is true when the title says so (English, plus the Czech
+  `SE PŘESOUVÁ`): 2 events today (`PFL MENA 8: Khobar (cancelled)`, `OKTAGON PRIME 4`). Filter on it
+  when showing event lists.
 - **Contender Series:** the slug or the title matches `dwcs` or `contender series` (the two disagree
   on some DWCS Brazil events). `is_official_ufc` is UFC and not Contender Series.
 - **Unexpected values** are never guessed: an unrecognised bout status gives `outcome = 'unknown'`,
@@ -66,8 +73,8 @@ events and for files still inside bronze's quiet window.
   RIZIN 97%, OKTAGON 66%, UFC 63%. PFL and RIZIN appear to list the winner first, so `fighter_a`,
   `corner` and `a_win` must not be used as features for the prediction model (label leakage). The
   report prints `a_win_share_by_org` every run.
-- Some events have empty cards at the source (5 of 1,263, e.g. `OKTAGON TIME`), and one is titled
-  "(cancelled)" while its status is `completed`.
+- Some events have empty cards at the source (5 of 1,263). Two are cancelled or postponed
+  (`title_says_cancelled`); the other three (`OKTAGON TIME` x2, `OKTAGON SUMMER FEST`) are simply empty.
 - About 6% of played bouts have no round stats (UFC 1994 to 98, early PFL, OKTAGON and RIZIN years).
 - One UFC bout (83820) is a completed split decision with no winner upstream; its outcome is `unknown`.
 

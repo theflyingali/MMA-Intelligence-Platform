@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 KNOWN_SPONSORS = ("Crypto.com", "VeChain", "Polymarket")
 # Leads that are part of the event name, not sponsors: not reported for review.
-KNOWN_NON_SPONSOR_LEADS = ("noche", "road to")
+KNOWN_NON_SPONSOR_LEADS = ("noche", "road to", "super", "east pro fight - powered by")
 BRANDS = ("Dana White's", "UFC", "PFL", "Professional Fighters League", "OKTAGON", "RIZIN", "DWCS",
           "The Ultimate Fighter")
 
@@ -23,6 +23,9 @@ _BRAND_ALT = "|".join(re.escape(b) for b in BRANDS)
 # lookahead, `Rizin 1 - Rizin Fighting Grand Prix` or `PFL 10: 2023 ... PFL` were reported as leads.
 LEAD_PATTERN = r"(?i)^(?!(?:" + _BRAND_ALT + r")\b)(.+?)\s+(?:" + _BRAND_ALT + r")\b"
 CONTENDER_PATTERN = r"(?i)dwcs|contender series"
+# The source lists some cancelled or postponed events as `completed`, with an empty card; only the title
+# says so. English wording plus the one Czech title seen (`SE PŘESOUVÁ`, "is being moved").
+CANCELLED_PATTERN = r"(?iu)\bcancell?ed\b|\bpostponed\b|\bse\s+přesouvá\b"
 
 
 @dataclass(frozen=True)
@@ -43,6 +46,11 @@ def clean_title(title: str | None) -> TitleParts | None:
     if lead_text and lead_text.lower() not in KNOWN_NON_SPONSOR_LEADS:
         return TitleParts(clean=title.strip(), sponsor=None, lead_unreviewed=lead_text)
     return TitleParts(clean=title.strip(), sponsor=None, lead_unreviewed=None)
+
+
+def title_says_cancelled(title: str | None) -> bool:
+    """True when the title says the event was cancelled or postponed (status is not reliable for this)."""
+    return title is not None and re.search(CANCELLED_PATTERN, title) is not None
 
 
 def is_contender_series(slug: str | None, title: str | None) -> bool:
