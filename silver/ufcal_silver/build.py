@@ -13,7 +13,7 @@ import logging
 from typing import Any
 
 from . import schemas
-from .titles import CONTENDER_PATTERN, KNOWN_NON_SPONSOR_LEADS, LEAD_PATTERN, SPONSOR_PATTERN
+from .titles import CANCELLED_PATTERN, CONTENDER_PATTERN, KNOWN_NON_SPONSOR_LEADS, LEAD_PATTERN, SPONSOR_PATTERN
 
 log = logging.getLogger("ufcal_silver")
 
@@ -81,6 +81,7 @@ def event_rows(ev: Any) -> Any:
         d["short_title"].alias("short_title"), d["numbering"].alias("numbering"),
         contender.alias("is_contender_series"),
         ((d["org"] == "ufc") & ~contender).alias("is_official_ufc"),
+        F.coalesce(raw.rlike(CANCELLED_PATTERN), F.lit(False)).alias("title_says_cancelled"),
         d["sport"].alias("sport"), F.to_timestamp(d["starts_at"]).alias("starts_at"),
         F.to_timestamp(d["main_card_at"]).alias("main_card_at"),
         F.to_timestamp(d["prelims_at"]).alias("prelims_at"),

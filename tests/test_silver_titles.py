@@ -1,6 +1,6 @@
 import pytest
 
-from silver.ufcal_silver.titles import clean_title, is_contender_series
+from silver.ufcal_silver.titles import clean_title, is_contender_series, title_says_cancelled
 
 
 @pytest.mark.parametrize("title,clean,sponsor", [
@@ -14,6 +14,26 @@ from silver.ufcal_silver.titles import clean_title, is_contender_series
 def test_known_sponsors_are_stripped_and_kept_as_a_column(title, clean, sponsor):
     p = clean_title(title)
     assert (p.clean, p.sponsor, p.lead_unreviewed) == (clean, sponsor, None)
+
+
+@pytest.mark.parametrize("title", ["Super RIZIN 2", "Super RIZIN / RIZIN 38", "East PRO Fight - Powered by OKTAGON MMA"])
+def test_reviewed_event_names_are_not_reported(title):
+    assert clean_title(title).lead_unreviewed is None
+
+
+@pytest.mark.parametrize("title,expected", [
+    ("PFL MENA 8: Khobar (cancelled)", True),
+    ("UFC 99 (Canceled)", True),
+    ("PFL 4 postponed", True),
+    ("OKTAGON PRIME 4 - SE PŘESOUVÁ", True),
+    ("oktagon prime 4 - se přesouvá", True),
+    ("OKTAGON TIME", False),
+    ("OKTAGON SUMMER FEST", False),
+    ("UFC 333: Volkanovski vs Evloev", False),
+    (None, False),
+])
+def test_title_says_cancelled(title, expected):
+    assert title_says_cancelled(title) is expected
 
 
 @pytest.mark.parametrize("title", ["Noche UFC: Lopes vs Silva", "Road to UFC Season 4 Semifinals", "Road To UFC: Maheshate vs Flowers"])
@@ -36,7 +56,7 @@ def test_titles_with_brand_first_or_no_brand_have_no_lead(title):
 
 
 def test_lead_before_a_brand_in_another_org_is_reported():
-    assert clean_title("East PRO Fight - Powered by Oktagon").lead_unreviewed == "East PRO Fight - Powered by"
+    assert clean_title("Acme Fight Night - Powered by Oktagon").lead_unreviewed == "Acme Fight Night - Powered by"
 
 
 def test_none_title():
