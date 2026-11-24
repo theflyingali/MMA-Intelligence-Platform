@@ -117,7 +117,11 @@ def test_bronze_to_silver_incremental_refetch_and_full_refresh(spark, landing, c
     assert checks["bout_fighters_without_fighter_row"] == 0
     assert first["data_quality"]["titles"]["sponsor_prefixes_stripped"] == [["Crypto.com", 1]]
     assert first["data_quality"]["titles"]["leads_for_review"] == []
-    assert first["data_quality"]["a_win_share_by_org"] == [["rizin", 1.0, 1], ["ufc", 0.5, 2]]
+    # Fixtures start in 2026: ufc is reliable, rizin never is. Shape: [org, corner_reliable, a_win share, n].
+    assert first["data_quality"]["a_win_share_by_corner_reliable"] == [["rizin", False, 1.0, 1], ["ufc", True, 0.5, 2]]
+    assert first["data_quality"]["checks"]["corner_reliable_org_years_skewed"] == 0
+    assert {r["org"]: r["corner_reliable"] for r in rows(spark, "bout")} == {"ufc": True, "rizin": False}
+    assert {r["corner_reliable"] for r in rows(spark, "fighter_bout", "org = 'rizin'")} == {False}
 
     # Rerun: nothing changed, nothing rewritten.
     second = silver(spark, capsys)

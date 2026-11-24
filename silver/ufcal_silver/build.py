@@ -13,6 +13,7 @@ import logging
 from typing import Any
 
 from . import schemas
+from .corner import CORNER_RELIABLE_FROM
 from .titles import CANCELLED_PATTERN, CONTENDER_PATTERN, KNOWN_NON_SPONSOR_LEADS, LEAD_PATTERN, SPONSOR_PATTERN
 
 log = logging.getLogger("ufcal_silver")
@@ -61,6 +62,16 @@ def changed_rows(spark: Any, catalog: str, src: str, tgt: str, which: str, schem
 
 
 # ---- transforms (changed bronze rows -> silver-shaped rows) ------------------------------------
+
+def corner_reliable_expr(org: Any, starts_at: Any) -> Any:
+    """Spark form of corner.corner_reliable: org listed in CORNER_RELIABLE_FROM and year at or after its cutoff."""
+    from pyspark.sql import functions as F
+
+    expr = F.lit(False)
+    for name, first_year in CORNER_RELIABLE_FROM.items():
+        expr = expr | ((org == name) & (F.year(starts_at) >= first_year))
+    return F.coalesce(expr, F.lit(False))
+
 
 def event_rows(ev: Any) -> Any:
     from pyspark.sql import functions as F
@@ -135,6 +146,7 @@ def bout_rows(ev: Any) -> Any:
         r["method"].alias("method"), mn.alias("method_normalized"), r["finish_detail"].alias("finish_detail"),
         r["round"].alias("end_round"), r["time"].alias("end_time"), r["time_seconds"].alias("end_time_seconds"),
         b["referee"].alias("referee"), b["bonus"].alias("bonus"), "is_contender_series",
+        corner_reliable_expr(F.col("org"), F.col("event_starts_at")).alias("corner_reliable"),
         "fetched_at", "_bronze_ingested_at",
     )
     return dedupe(out, ("bout_id",))
@@ -154,7 +166,7 @@ def fighter_bout_rows(bouts: Any) -> Any:
             .when(F.col("outcome") == "draw", "draw").otherwise("no_contest").alias("result"),
             "event_id", "org", "event_starts_at", "weight_class", "is_title", "is_main",
             "scheduled_rounds", "method_normalized", "end_round", "end_time_seconds",
-            "is_contender_series", "_bronze_ingested_at",
+            "is_contender_series", "corner_reliable", "_bronze_ingested_at",
         )
 
     return side("fighter_a", "fighter_b", "a", "a_win", "b_win").unionByName(
@@ -385,9 +397,15 @@ def dq_report(spark: Any, catalog: str, tgt: str) -> dict[str, Any]:
             f"SELECT DISTINCT title_lead_unreviewed FROM {t['event']} WHERE title_lead_unreviewed IS NOT NULL "
             "ORDER BY 1 LIMIT 50").collect()],
     }
-    # Share of decided bouts won from corner A. Near 50% means a neutral side; near 100% means the source
-    # lists the winner first for that org, so corner / fighter_a must not be used as a model feature.
-    a_share = [[r[0], float(r[1]), int(r[2])] for r in spark.sql(
-        f"SELECT org, round(avg(CASE WHEN outcome = 'a_win' THEN 1.0 ELSE 0.0 END), 3), count(*) "
-        f"FROM {t['bout']} WHERE outcome IN ('a_win','b_win') GROUP BY org ORDER BY org").collect()]
-    return {"row_counts": counts, "checks": checks, "a_win_share_by_org": a_share, "titles": titles}
+    # Share of decided bouts won from corner A, split by the corner_reliable flag. Reliable groups should sit
+    # near 55 to 65%, unreliable ones near 100% (the source lists the winner first). The per-org average alone
+    # hid the UFC break at 2010, so the check below looks at each org and year inside the reliable group.
+    a_share = [[r[0], bool(r[1]), float(r[2]), int(r[3])] for r in spark.sql(
+        f"SELECT org, corner_reliable, round(avg(CASE WHEN outcome = 'a_win' THEN 1.0 ELSE 0.0 END), 3), count(*) "
+        f"FROM {t['bout']} WHERE outcome IN ('a_win','b_win') GROUP BY org, corner_reliable "
+        "ORDER BY org, corner_reliable").collect()]
+    checks["corner_reliable_org_years_skewed"] = one(
+        f"SELECT count(*) FROM (SELECT org, year(event_starts_at) y FROM {t['bout']} "
+        "WHERE corner_reliable AND outcome IN ('a_win','b_win') GROUP BY 1, 2 "
+        "HAVING count(*) >= 30 AND avg(CASE WHEN outcome = 'a_win' THEN 1.0 ELSE 0.0 END) > 0.8)")
+    return {"row_counts": counts, "checks": checks, "a_win_share_by_corner_reliable": a_share, "titles": titles}
