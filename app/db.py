@@ -101,7 +101,13 @@ class TokenProvider:
         except requests.RequestException as exc:
             raise QueryError(f"Token request to {urlsplit(self.settings.host).hostname} failed: {type(exc).__name__}") from None
         if resp.status_code != 200:
-            raise QueryError(f"Token request failed with HTTP {resp.status_code}")
+            reason = ""
+            try:  # e.g. {"error": "invalid_client", "error_description": "..."}; never contains the secret
+                body = resp.json()
+                reason = f": {body.get('error', '')} {body.get('error_description', '')}".rstrip()[:300]
+            except ValueError:
+                pass
+            raise QueryError(f"Token request failed with HTTP {resp.status_code}{reason}")
         body = resp.json()
         self._token = body["access_token"]
         self._expires_at = self.clock() + float(body.get("expires_in", 3600))
