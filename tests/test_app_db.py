@@ -123,6 +123,7 @@ def test_oauth_token_is_fetched_once_and_refreshed_before_expiry():
     token_calls = [c for c in session.calls if c[1].endswith("/oidc/v1/token")]
     assert len(token_calls) == 2
     assert token_calls[0][2]["data"]["grant_type"] == "client_credentials"
+    assert token_calls[0][2]["data"]["scope"] == "sql:read:restricted-query"
     assert session.calls[-1][2]["headers"]["Authorization"] == "Bearer t2"
 
 
@@ -146,3 +147,7 @@ def test_host_is_cleaned_and_named_in_connection_errors():
     with pytest.raises(db.QueryError, match="example.cloud.databricks.com failed: ConnectionError") as exc:
         client.query("SELECT 1")
     assert SECRET not in str(exc.value)
+
+
+def test_oauth_scope_can_be_overridden():
+    assert settings(DATABRICKS_OAUTH_SCOPE="all-apis").oauth_scope == "all-apis"

@@ -26,6 +26,8 @@ STATEMENT_TIMEOUT_S = 30  # wait inline this long, then poll
 MAX_WAIT_S = 90  # total budget per query, including a warehouse cold start; then cancel
 POLL_INTERVAL_S = 1.5
 DEFAULT_ROW_LIMIT = 10_000
+# Narrowest OAuth scope that covers read-only SQL; must match the scopes on the service principal's secret.
+DEFAULT_OAUTH_SCOPE = "sql:read:restricted-query"
 
 log = logging.getLogger("mma_app.db")
 
@@ -41,6 +43,7 @@ class Settings:
     client_id: str | None = None
     client_secret: str | None = None
     token: str | None = None
+    oauth_scope: str = DEFAULT_OAUTH_SCOPE
     catalog: str = "mma"
     schema: str = "silver"
 
@@ -58,6 +61,7 @@ class Settings:
             client_id=values.get("DATABRICKS_CLIENT_ID") or None,
             client_secret=values.get("DATABRICKS_CLIENT_SECRET") or None,
             token=values.get("DATABRICKS_TOKEN") or None,
+            oauth_scope=str(values.get("DATABRICKS_OAUTH_SCOPE") or DEFAULT_OAUTH_SCOPE).strip(),
         )
         missing = [n for n, v in (("DATABRICKS_HOST", host), ("DATABRICKS_WAREHOUSE_ID", warehouse)) if not v]
         if not (settings.client_id and settings.client_secret) and not settings.token:
@@ -94,7 +98,7 @@ class TokenProvider:
         try:
             resp = self.session.post(
                 f"{self.settings.host}/oidc/v1/token",
-                data={"grant_type": "client_credentials", "scope": "all-apis"},
+                data={"grant_type": "client_credentials", "scope": self.settings.oauth_scope},
                 auth=(self.settings.client_id or "", self.settings.client_secret or ""),
                 timeout=20,
             )
