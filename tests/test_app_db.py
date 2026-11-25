@@ -132,3 +132,17 @@ def test_oauth_failure_message_is_safe():
     with pytest.raises(db.QueryError, match="HTTP 401") as exc:
         client.query("SELECT 1")
     assert SECRET not in str(exc.value)
+
+
+def test_host_is_cleaned_and_named_in_connection_errors():
+    s = settings(DATABRICKS_HOST='"dbc-abc.cloud.databricks.com/?o=123#x"')
+    assert s.host == "https://dbc-abc.cloud.databricks.com"
+
+    class Down(FakeSession):
+        def post(self, url, **kw):
+            import requests
+            raise requests.ConnectionError("boom")
+    client = db.SqlClient(settings(DATABRICKS_CLIENT_ID="id", DATABRICKS_CLIENT_SECRET=SECRET), session=Down([]))
+    with pytest.raises(db.QueryError, match="example.cloud.databricks.com failed: ConnectionError") as exc:
+        client.query("SELECT 1")
+    assert SECRET not in str(exc.value)

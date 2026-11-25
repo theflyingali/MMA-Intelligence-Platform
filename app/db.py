@@ -17,6 +17,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any, Callable, Mapping
+from urllib.parse import urlsplit
 
 import pandas as pd
 import requests
@@ -46,9 +47,10 @@ class Settings:
     @classmethod
     def from_mapping(cls, values: Mapping[str, Any]) -> "Settings":
         """Build settings from Streamlit secrets or the environment (same key names)."""
-        host = str(values.get("DATABRICKS_HOST") or "").strip().rstrip("/")
-        if host and not host.startswith("https://"):
+        host = str(values.get("DATABRICKS_HOST") or "").strip().strip('"').strip("'")
+        if host and not host.startswith(("https://", "http://")):
             host = "https://" + host
+        host = urlsplit(host)._replace(path="", query="", fragment="").geturl() if host else ""
         warehouse = str(values.get("DATABRICKS_WAREHOUSE_ID") or "").strip()
         settings = cls(
             host=host,
@@ -97,7 +99,7 @@ class TokenProvider:
                 timeout=20,
             )
         except requests.RequestException as exc:
-            raise QueryError(f"Token request failed: {type(exc).__name__}") from None
+            raise QueryError(f"Token request to {urlsplit(self.settings.host).hostname} failed: {type(exc).__name__}") from None
         if resp.status_code != 200:
             raise QueryError(f"Token request failed with HTTP {resp.status_code}")
         body = resp.json()
@@ -168,7 +170,7 @@ class SqlClient:
         try:
             resp = self.session.request(method, url, headers=self._headers(), timeout=STATEMENT_TIMEOUT_S + 15, **kwargs)
         except requests.RequestException as exc:
-            raise QueryError(f"Request to the SQL API failed: {type(exc).__name__}") from None
+            raise QueryError(f"Request to {urlsplit(url).hostname} failed: {type(exc).__name__}") from None
         if resp.status_code != 200:
             detail = ""
             try:
