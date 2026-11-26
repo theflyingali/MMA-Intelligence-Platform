@@ -97,3 +97,9 @@ WHERE fight_id = :bout_id
 ORDER BY round_number, fighter_position
 LIMIT 100
 """
+
+# When the source was last fetched, for the "data last updated" note in the footer. One row.
+FRESHNESS = """
+SELECT max(fetched_at) AS fetched_at
+FROM event
+"""

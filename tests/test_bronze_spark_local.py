@@ -1,6 +1,6 @@
 """End-to-end bronze load against local Spark + Delta on a fake landing tree.
 
-Skipped unless pyspark and delta-spark are installed (they are not in requirements.txt; the load
+Skipped unless pyspark and delta-spark are installed (they are not in requirements-dev.txt; the load
 itself runs on Databricks serverless). Run with e.g. `uv pip install pyspark==3.5.3 delta-spark==3.2.1`.
 """
 

@@ -147,3 +147,9 @@ def test_search_is_accent_insensitive_and_respects_orgs():
     assert list(d.search_fighters(index, "juan diaz", ["dwcs"])["fighter_id"]) == [1]
     assert d.search_fighters(index, "   ", list(d.ORG_KEYS)).empty
     assert d.search_fighters(index, "orgs", list(d.ORG_KEYS)).empty
+
+
+def test_freshness_note():
+    assert d.freshness_note(pd.Timestamp("2026-11-22 18:09:52", tz="UTC")) == "Data last updated 22 Nov 2026."
+    assert d.freshness_note(None) == ""
+    assert d.freshness_note(pd.NaT) == ""

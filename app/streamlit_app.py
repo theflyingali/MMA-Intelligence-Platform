@@ -85,7 +85,7 @@ def load(name: str, **params: Any) -> pd.DataFrame:
     except db.QueryError as exc:
         log.error("query %s failed: %s", name, exc)
         st.error("The data service is not available right now. Please try again in a minute.")
-        footer()
+        footer(with_freshness=False)
         st.stop()
     raise AssertionError("unreachable")
 
@@ -99,9 +99,21 @@ def events_frame() -> pd.DataFrame:
 # --------------------------------------------------------------------------------------------- layout
 
 
-def footer() -> None:
+def _freshness() -> str:
+    """Best effort: a failed lookup drops the note instead of stopping the page."""
+    try:
+        frame = _fetch("FRESHNESS")
+    except db.QueryError as exc:
+        log.warning("freshness lookup failed: %s", exc)
+        return ""
+    return d.freshness_note(frame["fetched_at"].iloc[0]) if len(frame) else ""
+
+
+def footer(with_freshness: bool = True) -> None:
+    note = _freshness() if with_freshness else ""
     st.markdown(
         f'<div class="footer">Data by <a href="{d.UFCALENDAR_URL}" target="_blank" rel="noopener">UFCalendar</a>. '
+        f"{d.esc(note) + ' ' if note else ''}"
         "For display and analysis only. Not affiliated with any organisation.</div>",
         unsafe_allow_html=True,
     )

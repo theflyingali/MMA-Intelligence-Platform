@@ -301,3 +301,10 @@ def search_fighters(index: pd.DataFrame, query: str, orgs: Sequence[str], limit:
     found["_exact"] = found["name"].map(normalise) == " ".join(words)
     found = found.sort_values(["_exact", "bouts"], ascending=[False, False])
     return found.drop(columns="_exact").head(limit)
+
+
+def freshness_note(fetched_at: Any) -> str:
+    """Footer text for the latest source fetch; empty when unknown, so the footer never breaks."""
+    if missing(fetched_at):
+        return ""
+    return f"Data last updated {fmt_date(fetched_at)}."
