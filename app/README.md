@@ -14,6 +14,9 @@ Reads only `mma.silver` through the Databricks SQL Statement Execution API, host
 ## Rules the app enforces
 - **Corners:** winners are listed first everywhere; corner colours are never shown. Corner order is shown
   only for undecided bouts where `corner_reliable` is true, with a note that corner A is not a performance stat.
+- **Photos:** only UFCalendar's Wikimedia Commons / CC photos, each shown with its photographer, licence and
+  source link (a licence requirement); a photo without that credit is not shown, and fighters without one get
+  their initials. Never photos from ESPN, Tapology, UFC or other sites (copyrighted).
 - **UFCalendar terms:** "Data by UFCalendar" on every page; tables are static HTML, so there is no CSV
   download; no bulk export; bronze and raw payloads are never read.
 - **Data caveats:** cancelled events and bouts are hidden; Contender Series is its own organisation in the

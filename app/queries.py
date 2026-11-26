@@ -103,3 +103,12 @@ FRESHNESS = """
 SELECT max(fetched_at) AS fetched_at
 FROM event
 """
+
+# The first fighter photo that carries its credit (artist and licence must be shown with it, CC terms).
+FIGHTER_IMAGE = """
+SELECT url, width, height, license, license_url, artist, source_page
+FROM fighter_image
+WHERE fighter_id = :fighter_id AND artist IS NOT NULL AND license IS NOT NULL
+ORDER BY position
+LIMIT 1
+"""

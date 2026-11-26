@@ -51,6 +51,12 @@ table.t a:hover { text-decoration: underline; }
 .headline { font-size: 1.35rem; line-height: 1.4; margin: .25rem 0 .5rem; }
 .headline a { text-decoration: none; }
 [data-testid="stMetricValue"] { font-size: 1.5rem; }
+.photo { margin: 0 0 .75rem; max-width: 220px; }
+.photo img, .photo-ph { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; object-position: 50% 20%;
+  border-radius: 12px; display: block; }
+.photo-ph { display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: 600;
+  background: rgba(128,128,128,.15); opacity: .8; }
+.photo figcaption { font-size: .72rem; opacity: .75; margin-top: .3rem; line-height: 1.3; overflow-wrap: anywhere; }
 </style>
 """
 
@@ -291,9 +297,14 @@ def page_fighter(orgs: list[str]) -> None:
         st.title("Fighter not found")
         return
     f = profile.iloc[0]
-    st.title(str(f["name"]))
-    if not d.missing(f["nickname"]):
-        st.markdown(f'<div class="muted">“{d.esc(f["nickname"])}”</div>', unsafe_allow_html=True)
+    images = load("FIGHTER_IMAGE", fighter_id=int(fighter_id))
+    image = images.iloc[0].to_dict() if not images.empty else None
+    photo_col, head_col = st.columns([1, 4], vertical_alignment="center")
+    photo_col.markdown(d.photo_html(image, f["name"]), unsafe_allow_html=True)
+    with head_col:
+        st.title(str(f["name"]))
+        if not d.missing(f["nickname"]):
+            st.markdown(f'<div class="muted">“{d.esc(f["nickname"])}”</div>', unsafe_allow_html=True)
 
     history = load("FIGHTER_HISTORY", fighter_id=int(fighter_id)).copy()
     history["org_key"] = [d.org_key(o, c) for o, c in zip(history["org"], history["is_contender_series"])]

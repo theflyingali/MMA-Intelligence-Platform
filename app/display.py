@@ -308,3 +308,38 @@ def freshness_note(fetched_at: Any) -> str:
     if missing(fetched_at):
         return ""
     return f"Data last updated {fmt_date(fetched_at)}."
+
+
+def initials(name: Any) -> str:
+    """Up to two initials for the photo placeholder ("Islam Makhachev" -> "IM")."""
+    parts = [p for p in str(name or "").split() if p[:1].isalpha()]
+    if not parts:
+        return "?"
+    picked = parts[:1] + parts[1:][-1:]
+    return "".join(p[0].upper() for p in picked)
+
+
+def _safe_url(value: Any) -> str | None:
+    text = "" if missing(value) else str(value).strip()
+    return text if text.startswith("https://") else None
+
+
+def photo_html(image: Mapping[str, Any] | None, name: Any) -> str:
+    """Fighter photo with its licence credit, or an initials placeholder.
+
+    UFCalendar's images are Wikimedia Commons / CC only, and showing `artist` and `license` with the photo
+    is a licence requirement, so a photo without both (or without an https URL) falls back to initials.
+    """
+    url = _safe_url(image.get("url")) if image else None
+    artist = None if not image or missing(image.get("artist")) else str(image["artist"])
+    licence = None if not image or missing(image.get("license")) else str(image["license"])
+    if not (url and artist and licence):
+        return (f'<div class="photo"><div class="photo-ph" role="img" aria-label="No photo of {esc(name)}">'
+                f"{esc(initials(name))}</div></div>")
+    licence_url, source = _safe_url(image.get("license_url")), _safe_url(image.get("source_page"))
+    lic = (f'<a href="{esc(licence_url)}" target="_blank" rel="noopener">{esc(licence)}</a>'
+           if licence_url else esc(licence))
+    via = (f', via <a href="{esc(source)}" target="_blank" rel="noopener">Wikimedia Commons</a>'
+           if source else "")
+    return (f'<figure class="photo"><img src="{esc(url)}" alt="Photo of {esc(name)}" loading="lazy" '
+            f'referrerpolicy="no-referrer"><figcaption>Photo: {esc(artist)}, {lic}{via}</figcaption></figure>')

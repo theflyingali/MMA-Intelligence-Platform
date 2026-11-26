@@ -22,6 +22,15 @@ from .silver_fixtures import bout, event, fighter, odds, rounds  # noqa: E402
 
 CAT, BRZ, SLV = "spark_catalog", "s_bronze", "s_silver"
 D1 = "ingest_date=2026-10-30"
+IMAGES = [
+    {"url": "https://cdn.example/a.webp", "width": 1244, "height": 1080, "license": "CC BY 3.0",
+     "license_url": "https://creativecommons.org/licenses/by/3.0", "artist": "Photographer A",
+     "source_page": "https://commons.wikimedia.org/wiki/File:A.png"},
+    {"url": "https://cdn.example/b.webp", "width": None, "height": None, "license": None, "license_url": None,
+     "artist": None, "source_page": None},
+    {"url": None, "width": None, "height": None, "license": None, "license_url": None, "artist": None,
+     "source_page": None},
+]
 
 
 def put(root: Path, rel: str, response: dict, fetched_at: str = "2026-10-30T08:00:00Z") -> None:
@@ -44,7 +53,8 @@ def landing(tmp_path_factory) -> Path:
     for fid, a, b in ((100, 1, 2), (200, 7, 8), (300, 9, 10)):
         put(root, f"fight_rounds/{D1}/{fid}.json", rounds(fid, a, b))
     for i in (1, 2, 5, 6, 7, 8, 9, 10):
-        put(root, f"fighter/{D1}/{i}.json", fighter(i, **({"dob": None, "height_inches": None} if i == 2 else {})))
+        over = {"dob": None, "height_inches": None} if i == 2 else {"images": IMAGES} if i == 1 else {}
+        put(root, f"fighter/{D1}/{i}.json", fighter(i, **over))
     return root
 
 
@@ -69,7 +79,7 @@ def test_bronze_to_silver_incremental_refetch_and_full_refresh(spark, landing, c
     assert first["changed_bronze_rows"] == {"events": 3, "fights": 3, "odds": 2, "fighters": 8}
     counts = first["data_quality"]["row_counts"]
     assert counts == {"event": 3, "bout": 5, "fighter_bout": 8, "round_stats": 12, "odds": 4, "fighter": 8,
-                      "fighter_record": 24}
+                      "fighter_record": 24, "fighter_image": 2}
 
     # Events: sponsor stripped but kept, contender flag from the slug, official only for non-DWCS UFC.
     ev = {r["event_id"]: r for r in rows(spark, "event")}
@@ -102,6 +112,12 @@ def test_bronze_to_silver_incremental_refetch_and_full_refresh(spark, landing, c
     rec = {r["record_type"]: r["record"] for r in rows(spark, "fighter_record", "fighter_id = 1")}
     assert rec == {"pro_mma": "6-1-0", "ufc": "2-1", "amateur_mma": "3-0"}
 
+    # Photos: one row each, in source order, credit kept; the one without a URL is dropped.
+    img = rows(spark, "fighter_image", order="fighter_id, position")
+    assert [(r["fighter_id"], r["position"], r["license"], r["artist"]) for r in img] == [
+        (1, 0, "CC BY 3.0", "Photographer A"), (1, 1, None, None)]
+    assert img[0]["source_page"].startswith("https://commons.wikimedia.org/") and img[0]["width"] == 1244
+
     # Odds and rounds.
     o = {r["fight_id"]: r for r in rows(spark, "odds")}
     assert set(o) == {100, 102, 200, 999}
@@ -115,6 +131,7 @@ def test_bronze_to_silver_incremental_refetch_and_full_refresh(spark, landing, c
     assert checks["played_bouts_without_round_stats"] == 1  # the draw, 102, has no rounds file
     assert checks["bouts_with_unknown_outcome"] == 0 and checks["events_without_bouts"] == 0
     assert checks["bout_fighters_without_fighter_row"] == 0
+    assert checks["fighters_with_image"] == 1 and checks["images_without_credit"] == 1
     assert first["data_quality"]["titles"]["sponsor_prefixes_stripped"] == [["Crypto.com", 1]]
     assert first["data_quality"]["titles"]["leads_for_review"] == []
     # Fixtures start in 2026: ufc is reliable, rizin never is. Shape: [org, corner_reliable, a_win share, n].

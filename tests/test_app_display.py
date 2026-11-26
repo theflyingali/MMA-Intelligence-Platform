@@ -153,3 +153,33 @@ def test_freshness_note():
     assert d.freshness_note(pd.Timestamp("2026-11-22 18:09:52", tz="UTC")) == "Data last updated 22 Nov 2026."
     assert d.freshness_note(None) == ""
     assert d.freshness_note(pd.NaT) == ""
+
+
+IMG = {"url": "https://cdn.example/a.webp", "license": "CC BY 3.0",
+       "license_url": "https://creativecommons.org/licenses/by/3.0", "artist": "Новости <ННТ>",
+       "source_page": "https://commons.wikimedia.org/wiki/File:A.png"}
+
+
+def test_initials():
+    assert d.initials("Islam Makhachev") == "IM"
+    assert d.initials("Ian Machado Garry") == "IG"
+    assert d.initials("Shogun") == "S"
+    assert d.initials(None) == "?"
+
+
+def test_photo_shows_credit_and_escapes():
+    out = d.photo_html(IMG, "Islam Makhachev")
+    assert '<img src="https://cdn.example/a.webp"' in out and 'alt="Photo of Islam Makhachev"' in out
+    assert "Photo: Новости &lt;ННТ&gt;, " in out and ">CC BY 3.0</a>" in out and "Wikimedia Commons</a>" in out
+
+
+def test_photo_without_credit_or_https_falls_back_to_initials():
+    for bad in ({**IMG, "artist": None}, {**IMG, "license": float("nan")}, {**IMG, "url": "http://x/a.jpg"},
+                {**IMG, "url": "javascript:alert(1)"}, None):
+        out = d.photo_html(bad, "Islam Makhachev")
+        assert "<img" not in out and ">IM</div>" in out
+
+
+def test_photo_credit_without_links():
+    out = d.photo_html({**IMG, "license": "Public domain", "license_url": None, "source_page": None}, "X")
+    assert out.endswith("<figcaption>Photo: Новости &lt;ННТ&gt;, Public domain</figcaption></figure>")

@@ -14,6 +14,7 @@ payload, so silver can always be rebuilt (`--full-refresh`).
 | `odds` | fight | Consensus, opening and closing prices for both sides, fair probability, movement. Props stay in bronze |
 | `fighter` | fighter | Inches to cm, `dob` as a date, numeric career stats, power index, UFC and pro MMA records |
 | `fighter_record` | fighter and record type | Long format from `records`, which is keyed by type (`pro_mma`, `ufc`, `amateur_mma`, ...) |
+| `fighter_image` | fighter and position | Photos from `images` (Wikimedia Commons / CC only, 771 for 340 fighters on 2026-11-26). `artist` and `license` must be shown with the photo; the DQ report counts photos without them (`images_without_credit`) |
 
 Every row carries `fetched_at` and `_bronze_ingested_at`.
 

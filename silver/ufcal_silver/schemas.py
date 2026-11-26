@@ -54,5 +54,7 @@ FIGHTER = (
     "stats:struct<`values`:struct<slpm:double,str_acc:double,sapm:double,str_def:double,td_avg:double,"
     "td_acc:double,td_def:double,sub_avg:double>,basis:struct<bouts:int>>,"
     "power_index:struct<rating:double,peak:double,peak_date:string,fights_rated:int,last_fought_date:string>,"
-    "last_fight:struct<fight_id:bigint,event_id:bigint,`date`:string>>>"
+    "last_fight:struct<fight_id:bigint,event_id:bigint,`date`:string>,"
+    "images:array<struct<url:string,width:int,height:int,license:string,license_url:string,artist:string,"
+    "source_page:string>>>>"
 )

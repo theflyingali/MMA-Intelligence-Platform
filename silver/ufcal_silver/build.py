@@ -27,6 +27,7 @@ TABLES: dict[str, tuple[tuple[str, ...], str | None, str | None]] = {
     "odds": (("fight_id",), "event_id", "_chg_odds"),
     "fighter": (("fighter_id",), None, None),
     "fighter_record": (("fighter_id", "record_type"), "fighter_id", "_chg_fighters"),
+    "fighter_image": (("fighter_id", "position"), "fighter_id", "_chg_fighters"),
 }
 # Bronze table behind each "changed" set, and the silver table + column that records what was built.
 SOURCES = {
@@ -265,6 +266,27 @@ def fighter_record_rows(fi: Any) -> Any:
         ("fighter_id", "record_type"))
 
 
+def fighter_image_rows(fi: Any) -> Any:
+    """One row per fighter photo, in source order (position 0 is the one to show first).
+
+    UFCalendar sends only Wikimedia Commons / CC images; showing `artist` and `license` with the photo is a
+    licence requirement, so rows without a URL are dropped but missing credit fields are kept as null and
+    the app decides whether to show the photo.
+    """
+    from pyspark.sql import functions as F
+
+    exploded = fi.where(F.col("p.data").isNotNull()).select(
+        F.col("key").alias("fighter_id"), F.col("fetched_at"),
+        F.col("ingested_at").alias("_bronze_ingested_at"),
+        F.posexplode(F.col("p.data.images")).alias("position", "i"))
+    return dedupe(exploded.where(F.col("i.url").isNotNull()).select(
+        "fighter_id", "position", F.col("i.url").alias("url"), F.col("i.width").alias("width"),
+        F.col("i.height").alias("height"), F.col("i.license").alias("license"),
+        F.col("i.license_url").alias("license_url"), F.col("i.artist").alias("artist"),
+        F.col("i.source_page").alias("source_page"), "fetched_at", "_bronze_ingested_at"),
+        ("fighter_id", "position"))
+
+
 def dedupe(df: Any, keys: tuple[str, ...]) -> Any:
     """One row per key (the latest fetch), so a drifted payload cannot make MERGE see duplicate sources."""
     from pyspark.sql import Window
@@ -354,6 +376,7 @@ def run_build(spark: Any, catalog: str, src: str, tgt: str, full_refresh: bool, 
     merged["round_stats"] = merge_table(spark, catalog, tgt, "round_stats", round_rows(rd))
     merged["odds"] = merge_table(spark, catalog, tgt, "odds", odds_rows(od))
     merged["fighter_record"] = merge_table(spark, catalog, tgt, "fighter_record", fighter_record_rows(fi))
+    merged["fighter_image"] = merge_table(spark, catalog, tgt, "fighter_image", fighter_image_rows(fi))
     merged["fighter"] = merge_table(spark, catalog, tgt, "fighter", fighter_rows(fi))
     bouts = bout_rows(ev)
     merged["bout"] = merge_table(spark, catalog, tgt, "bout", bouts)
@@ -389,6 +412,9 @@ def dq_report(spark: Any, catalog: str, tgt: str) -> dict[str, Any]:
             f"SELECT count(DISTINCT fighter_id) FROM {t['fighter_bout']} fb WHERE NOT EXISTS "
             f"(SELECT 1 FROM {t['fighter']} f WHERE f.fighter_id = fb.fighter_id)"),
         "fighters_without_dob": one(f"SELECT count(*) FROM {t['fighter']} WHERE dob IS NULL"),
+        "fighters_with_image": one(f"SELECT count(DISTINCT fighter_id) FROM {t['fighter_image']}"),
+        "images_without_credit": one(
+            f"SELECT count(*) FROM {t['fighter_image']} WHERE artist IS NULL OR license IS NULL"),
     }
     titles = {
         "sponsor_prefixes_stripped": [list(r) for r in spark.sql(
