@@ -11,7 +11,7 @@ Design: `docs/ingestion-design.md`. Code: `ingestion/ufcalendar/`. Runs from the
 - Python 3.11+, then install dependencies:
 
 ```bash
-python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+python -m venv .venv && source .venv/bin/activate && pip install -r requirements-dev.txt
 ```
 
 - `UFCAL_KEY=...` in `.env` (gitignored).
